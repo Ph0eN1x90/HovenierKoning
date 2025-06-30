@@ -2,7 +2,7 @@
   <div>
     <q-table
       flat bordered
-      title="Adressen Overzicht"
+      :title= "`${adres}`"
       title-class="text-h6"
       :loading="loading"
       :rows="rows"
@@ -13,25 +13,24 @@
       row-key="id"
       :pagination="{
         rowsPerPage: 15
-      }">
+      }"
+    >
 
-      <template #loading>
-        <q-inner-loading
-          showing
-          color="primary"
-        />
-      </template>
+    <template #loading>
+      <q-inner-loading
+        showing
+        color="primary"
+      />
+    </template>
 
       <template #body="props" >
-        <q-tr :props="props" @click="$router.push({ name: 'adres-overzicht' , params: { adres: props.row.straatnaam } })">
-        <q-td key="straat" :props="props">
-          <q-btn flat color="primary" @click="copyToClipboard(`${props.row.straatnaam}`)">
-            {{ props.row.straatnaam }}
-          </q-btn>
-        </q-td>
 
-        <q-td key="huisnummers" :props="props">
-            {{ props.row.huisnummers.length <= 1 ?  props.row.huisnummers+'' : props.row.huisnummers[0]+'....'+ props.row.huisnummers[props.row.huisnummers.length - 1]}}
+        <q-tr :props="props" @click="showDialog(props.row)" class="cursor-pointer">
+
+        <q-td key="huisnummer" :props="props">
+          <q-btn flat color="primary" @click="copyToClipboard(`${props.row.straatnaam} ${props.row.huisnummer} ${props.row.stad} ${props.row.postcode}`)">
+            {{ props.row.huisnummer }}
+          </q-btn>
         </q-td>
 
         <q-td key="stad" :props="props">
@@ -40,10 +39,6 @@
 
         <q-td key="postcode" :props="props">
             {{ props.row.postcode }}
-        </q-td>
-
-        <q-td key="aantal" :props="props">
-            {{ props.row.huisnummers.length }}
         </q-td>
 
         <q-td key="afgerond" :props="props">
@@ -71,55 +66,59 @@
       </template>
 
     </q-table>
-  </div>
+    </div>
 </template>
 
 <script setup lang="ts">
-
 import type { QTableColumn } from 'quasar';
+import { copyToClipboard, Dialog } from 'quasar';
 import { api } from 'src/boot/axios';
 import { ref } from 'vue';
-import { copyToClipboard } from 'quasar'
 import type { Adres } from 'src/models/Adres';
+import { useRoute } from 'vue-router';
+import HuisnummerDialogComponent from './HuisnummerDialogComponent.vue';
 
+const route = useRoute();
+const adres = ref(route.params.adres)
 const filter = ref('');
 const loading = ref(true);
 let rawData: Adres[];
-let result: Adres[];
 
-api.get('/api/adres/').then(
+function showDialog(row: Adres) {
+  console.log(row);
+  Dialog.create({
+    component: HuisnummerDialogComponent,
+    componentProps: {
+      adres: row,
+    }
+  }).onOk(() => {
+    console.log('OK')
+  }).onCancel(() => {
+    console.log('Cancel')
+  }).onDismiss(() => {
+    console.log('Called on OK or Cancel')
+  })
+}
+
+api.get('/api/adres/straat/' + adres.value?.toString()).then(
   function (response) {
   rawData = response.data ;
 
-  console.log(rawData);
+  console.log(response.data);
 
-  const filteredData = rawData.reduce((acc: Adres[], current) => {
-  const existingAdres = acc.find(adres => adres.straatnaam === current.straatnaam);
-  if (existingAdres) {
-    existingAdres.huisnummers = existingAdres.huisnummers ? [...existingAdres.huisnummers, current.huisnummer] : [current.huisnummer];
-    } else {
-    acc.push({
-      ...current,
-      huisnummers: [current.huisnummer],
-    });
-  }
-  return acc;
-}, []);
-
-result = filteredData.map(adres => {
-  return {
-    id: adres.id,
-    huisnummer: adres.huisnummer,
-    straatnaam: adres.straatnaam,
-    huisnummers: adres.huisnummers,
-    stad: adres.stad,
-    postcode: adres.postcode,
-    afgerond: adres.afgerond,
-  };
-});
+  rows = rawData.map((item: Adres) => {
+    return {
+      id: item.id,
+      straatnaam: item.straatnaam,
+      huisnummer: item.huisnummer,
+      huisnummers: item.huisnummers,
+      stad: item.stad,
+      postcode: item.postcode,
+      afgerond: item.afgerond,
+     }
+  });
 
   }).finally(() => {
-    rows = result
     loading.value = false
   })
   .catch(error => {
@@ -129,27 +128,14 @@ result = filteredData.map(adres => {
 let rows: Adres[] = []
 const columns: QTableColumn[] = [
 {
-  name: 'straat',
-  required: true,
-  label: 'Straat',
-  align: 'left',
-  field: 'straatNaam',
-  sortable: true,
-},
-{
-  name: 'huisnummers',
+  name: 'huisnummer',
   align: 'center',
-  label: 'Huisnummers',
-  field: 'huisnummers',
+  label: 'Huisnummer',
+  field: 'huisnummer',
   sortable: true,
 },
 { name: 'stad', label: 'Stad', field: 'stad', sortable: true },
 { name: 'postcode', label: 'Postcode', field: 'postcode', sortable: true },
-{
-  name: 'aantal',
-  label: 'Aantal',
-  field: 'huisnummers',
-  sortable: true },
-  { name: 'afgerond', label: 'Afgerond?', align: 'left', field: (row) => row.afgerond ? "Ja" : "Nee" }
+{ name: 'afgerond', label: 'Afgerond?', align: 'left', field: (row) => row.afgerond ? "Ja" : "Nee" }
 ];
 </script>

@@ -1,18 +1,24 @@
+import MainLayout from 'layouts/MainLayout.vue';
+import HuisnummerOverzicht from 'src/pages/HuisnummerOverzicht.vue';
+import AdressenOverzicht from 'src/pages/AdressenOverzicht.vue';
 import type { RouteRecordRaw } from 'vue-router';
 
 const routes: RouteRecordRaw[] = [
   {
     path: '/',
-    component: () => import('layouts/MainLayout.vue'),
-    children: [{ path: '', component: () => import('pages/IndexPage.vue') }],
+    component: MainLayout,
+    children: [{ path: '/', component: AdressenOverzicht, props: true }],
   },
-
-  // Always leave this as last one,
-  // but you can also remove it
+  {
+    path: '/adres',
+    component: MainLayout,
+    children: [{ path: '/adres/:adres', name: 'adres-overzicht', component: HuisnummerOverzicht, props: true }],
+  },
   {
     path: '/:catchAll(.*)*',
     component: () => import('pages/ErrorNotFound.vue'),
   },
 ];
+
 
 export default routes;
