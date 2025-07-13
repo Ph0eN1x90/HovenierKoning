@@ -1,8 +1,8 @@
 <template>
   <div>
-    <q-gallery ref="galleryRef" class="gallery-thumbnails" :images="images">
-      <div v-for="(image, index) in images" :key="index" class="thumbnail">
-        <div v-if="index <= 3" class="q-pa-xs">
+    <q-gallery ref="galleryRef" class="gallery-thumbnails" :images="images.slice(0, 3)">
+      <div v-for="(image, index) in images.slice(0, 3)" :key="index" class="thumbnail">
+        <div class="q-pa-xs">
           <img :src="image.src" @click="openGallery(index)">
           <q-tooltip :delay="500" :offset="[10, 10]">Foto {{ index + 1 }}</q-tooltip>
         </div>
@@ -31,14 +31,11 @@ const openGallery = (index: number) => {
 <style scoped>
 .gallery-thumbnails {
   display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
+  flex-wrap: nowrap;
+  justify-content:flex-start;
 }
 
 .thumbnail {
-  margin: 10px;
-  width: 100px;
-  height: 100px;
   border: 1px solid #ccc;
   border-radius: 5px;
   cursor: pointer;
@@ -47,7 +44,6 @@ const openGallery = (index: number) => {
 .thumbnail>div>img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
   border-radius: 5px;
 }
 </style>

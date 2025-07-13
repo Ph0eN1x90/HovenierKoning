@@ -2,7 +2,7 @@
   <div>
     <q-table
       flat bordered
-      :title= "`${adres}`"
+      :title= "`${address}`"
       title-class="text-h6"
       :loading="loading"
       :rows="rows"
@@ -27,22 +27,24 @@
 
         <q-tr :props="props" @click="showDialog(props.row)" class="cursor-pointer">
 
-        <q-td key="huisnummer" :props="props">
+        <q-td key="housenumber" :props="props">
           <q-btn flat color="primary" @click="copyToClipboard(`${props.row.straatnaam} ${props.row.huisnummer} ${props.row.stad} ${props.row.postcode}`)">
-            {{ props.row.huisnummer }}
+            {{ props.row.housenumber }}
           </q-btn>
         </q-td>
 
-        <q-td key="stad" :props="props">
-            {{ props.row.stad }}
+        <q-td key="city" :props="props">
+            {{ props.row.city }}
         </q-td>
 
-        <q-td key="postcode" :props="props">
-            {{ props.row.postcode }}
+        <q-td key="zipcode" :props="props">
+            {{ props.row.zipcode }}
         </q-td>
 
-        <q-td key="afgerond" :props="props">
-            {{ props.row.afgerond }}
+        <q-td key="completed" :props="props">
+          <span :style="{ color: props.row.finished ? 'green' : 'red' }">
+            {{ props.row.finished ? "Ja" : "Nee" }}
+          </span>
         </q-td>
         </q-tr>
       </template>
@@ -74,47 +76,38 @@ import type { QTableColumn } from 'quasar';
 import { copyToClipboard, Dialog } from 'quasar';
 import { api } from 'src/boot/axios';
 import { ref } from 'vue';
-import type { Adres } from 'src/models/Adres';
+import type { Address } from 'src/models/Address';
 import { useRoute } from 'vue-router';
-import HuisnummerDialogComponent from './HuisnummerDialogComponent.vue';
+import HousenumberDialogComponent from './HousenumberDialogComponent.vue';
 
 const route = useRoute();
-const adres = ref(route.params.adres)
+const address = ref(route.params.address)
 const filter = ref('');
 const loading = ref(true);
-let rawData: Adres[];
+let rawData: Address[];
 
-function showDialog(row: Adres) {
-  console.log(row);
+function showDialog(row: Address) {
   Dialog.create({
-    component: HuisnummerDialogComponent,
+    component: HousenumberDialogComponent,
     componentProps: {
-      adres: row,
+      address: row,
     }
-  }).onOk(() => {
-    console.log('OK')
-  }).onCancel(() => {
-    console.log('Cancel')
-  }).onDismiss(() => {
-    console.log('Called on OK or Cancel')
   })
 }
 
-api.get('/api/adres/straat/' + adres.value?.toString()).then(
+api.get('/api/address/street/' + address.value?.toString()).then(
   function (response) {
   rawData = response.data ;
-
-  console.log(response.data);
-
-  rows = rawData.map((item: Adres) => {
+  rows = rawData.map((item: Address) => {
     return {
       id: item.id,
-      straatnaam: item.straatnaam,
-      huisnummer: item.huisnummer,
-      huisnummers: item.huisnummers,
-      stad: item.stad,
-      postcode: item.postcode,
-      afgerond: item.afgerond,
+      streetname: item.streetname,
+      housenumber: item.housenumber,
+      housenumbers: item.housenumbers,
+      city: item.city,
+      zipcode: item.zipcode,
+      finished: item.finished,
+      date_finished: item.date_finished,
      }
   });
 
@@ -125,17 +118,17 @@ api.get('/api/adres/straat/' + adres.value?.toString()).then(
     console.log(error)
   });
 
-let rows: Adres[] = []
+let rows: Address[] = []
 const columns: QTableColumn[] = [
 {
-  name: 'huisnummer',
+  name: 'housenumber',
   align: 'center',
   label: 'Huisnummer',
-  field: 'huisnummer',
+  field: 'housenumber',
   sortable: true,
 },
-{ name: 'stad', label: 'Stad', field: 'stad', sortable: true },
-{ name: 'postcode', label: 'Postcode', field: 'postcode', sortable: true },
-{ name: 'afgerond', label: 'Afgerond?', align: 'left', field: (row) => row.afgerond ? "Ja" : "Nee" }
+{ name: 'city', label: 'Stad', field: 'city', sortable: true },
+{ name: 'zipcode', label: 'Postcode', field: 'zipcode', sortable: true },
+{ name: 'completed', label: 'Afgerond?', align: 'left', field: (row) => row.finished ? "Ja" : "Nee" }
 ];
 </script>

@@ -1,18 +1,18 @@
 import MainLayout from 'layouts/MainLayout.vue';
-import HuisnummerOverzicht from 'src/pages/HuisnummerOverzicht.vue';
-import AdressenOverzicht from 'src/pages/AdressenOverzicht.vue';
+import HousenumberOverview from 'src/pages/HousenumberOverview.vue';
+import AddressOverview from 'src/pages/AddressOverview.vue';
 import type { RouteRecordRaw } from 'vue-router';
 
 const routes: RouteRecordRaw[] = [
   {
     path: '/',
     component: MainLayout,
-    children: [{ path: '/', component: AdressenOverzicht, props: true }],
+    children: [{ path: '/', component: AddressOverview, props: true }],
   },
   {
-    path: '/adres',
+    path: '/address',
     component: MainLayout,
-    children: [{ path: '/adres/:adres', name: 'adres-overzicht', component: HuisnummerOverzicht, props: true }],
+    children: [{ path: '/address/:address', name: 'address-overview', component: HousenumberOverview, props: true }],
   },
   {
     path: '/:catchAll(.*)*',

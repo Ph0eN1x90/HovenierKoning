@@ -1,10 +1,10 @@
 <template>
-  <q-dialog v-model="dialog" persistent>
+  <q-dialog ref="dialogRef" @hide="onDialogHide" >
     <q-card style="min-width: 400px; max-width: 600px;">
 
       <q-card-section class="flex-row-title-btn-container">
         <div class="text-h6">Nieuwe Boom Toevoegen</div>
-        <q-btn class="flex-row-title-btn" size="sm" flat round icon="close" @click="onClose" />
+        <q-btn class="flex-row-title-btn" size="sm" flat round icon="close" @click="onDialogCancel" />
       </q-card-section>
 
       <q-separator />
@@ -16,7 +16,7 @@
       <q-card-section>
         <q-form ref="form" @submit.prevent="onSubmit" @reset="onReset" class="q-gutter-md">
           <q-input
-            v-model="boom.boomtype"
+            v-model="tree.treetype"
             name="boomtype"
             label="Boomtype"
             type="text"
@@ -27,7 +27,7 @@
             required
           />
           <q-input
-            v-model.number="boom.diameter"
+            v-model.number="tree.diameter"
             name="diameter"
             label="Diameter (cm)"
             type="number"
@@ -38,7 +38,7 @@
             required
           />
           <q-input
-            v-model.number="boom.hoogte"
+            v-model.number="tree.height"
             name="hoogte"
             label="Hoogte (m)"
             type="number"
@@ -48,23 +48,15 @@
             dense
             required
           />
-          <q-input
-            v-model="boom.datum_afgerond"
-            name="datum_afgerond"
-            label="Datum afgerond"
-            type="date"
-            outlined
-            dense
-            required
-          />
           <q-checkbox
-            v-model="boom.afgerond"
+            v-model="tree.finished"
             name="afgerond"
             label="Afgerond"
+            @update:model-value="val => { if (val) tree.date_finished = new Date().toISOString().slice(0, 10); else tree.date_finished = null; }"
             dense
           />
           <q-input
-            v-model="boom.comment"
+            v-model="tree.comment"
             name="comment"
             :rules="[v => v.length <= 500 || 'Commentaar mag maximaal 500 tekens zijn']"
             lazy-rules
@@ -80,7 +72,7 @@
       <q-separator />
       <q-card-actions align="right">
         <q-btn color="primary" label="Opslaan" @click="onSubmit" :disable="!valid" />
-        <q-btn flat label="Annuleren" @click="onClose" />
+        <q-btn flat label="Annuleren" @click="onDialogCancel" />
       </q-card-actions>
     </q-card>
   </q-dialog>
@@ -90,32 +82,33 @@
 
 import { api } from 'src/boot/axios';
 import { ref, watch } from 'vue';
-import type { Adres } from 'src/models/Adres';
-import type { Boom } from 'src/models/Boom';
+import type { Address } from 'src/models/Address';
+import type { Tree } from 'src/models/Tree';
+import { useDialogPluginComponent } from 'quasar';
 
-const dialog = ref(true);
-const form = ref();
-const valid = ref(false);
-const props = defineProps<{
-  adres: Adres
-  lastBoomNummer: number // Optional prop to set the last boom number
-}>()
-const boom = ref<Boom>({
+const tree = ref<Tree>({
   id: 0,
-  boomnummer: 0,
-  boomtype: '',
+  treenumber: 0,
+  treetype: '',
   diameter: 0,
-  hoogte: 0,
-  datum_afgerond: '',
-  afgerond: false,
+  height: 0,
+  date_finished: '',
+  finished: false,
   comment: '',
-  adres: {
+  address: {
     id: 0,
   }
 });
+const { dialogRef, onDialogCancel, onDialogHide } = useDialogPluginComponent()
+const form = ref();
+const valid = ref(false);
+const props = defineProps<{
+  address: Address
+  lastTreeNumber: number // Optional prop to set the last boom number
+}>()
 
 // Watch for changes in boom to revalidate
-watch(boom, checkFormValidity, { deep: true });
+watch(tree, checkFormValidity, { deep: true });
 
 // Function to check the validity of the form
 async function checkFormValidity() {
@@ -129,26 +122,26 @@ function onSubmit() {
   if (form.value) {
     form.value.validate().then((isValid: boolean) => {
       if (isValid) {
-        console.log(props.adres.huisnummer.toString());
-        boom.value.boomnummer = props.lastBoomNummer; // Set the last boom number from props
-        boom.value.adres.id = props.adres.id; // Set the address from the props
+        tree.value.treenumber = props.lastTreeNumber; // Set the last boom number from props
+        tree.value.address.id = props.address.id; // Set the address from the props
         // Here you can handle the form submission, e.g., send data to an API
-        boom.value.id = null; // Reset ID for new entry
-        console.log('Form submitted:', boom.value);
+        tree.value.id = null; // Reset ID for new entry
         // Example API call (uncomment and adjust as needed)
-        api.post('/api/bomen/save', boom.value)
+        api.post('/api/trees/save', tree.value)
           .then(response => {
             console.log('Boom saved successfully:', response.data);
+          }).finally(() => {
+            // Reset the form and close the dialog
+            onReset();
+            onDialogHide(); // Close the dialog after submission
           })
           .catch(error => {
             console.error('Error saving boom:', error);
           });
-
-        dialog.value = false; // Close the dialog after submission
       } else {
         console.error('Form is invalid');
       }
-    });
+    })
   }
   else {
     console.error('Form reference is not available');
@@ -157,23 +150,20 @@ function onSubmit() {
 
 function onReset() {
   // Reset the form fields if needed
-  boom.value = {
+  tree.value = {
     id: 0,
-    boomnummer: 0,
-    boomtype: '',
+    treenumber: 0,
+    treetype: '',
     diameter: 0,
-    hoogte: 0,
-    datum_afgerond: '',
-    afgerond: false,
+    height: 0,
+    date_finished: '',
+    finished: false,
     comment: '',
-    adres: {
+    address: {
       id: 0,
     }
   }
   valid.value = false; // Reset the validity state
 }
 
-function onClose() {
-  dialog.value = false;
-}
 </script>

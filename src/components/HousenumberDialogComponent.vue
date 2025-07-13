@@ -12,10 +12,10 @@
 
       <q-card-section>
         <p>
-          Huisnummer: {{ props.adres?.huisnummer }}<br>
-          Straatnaam: {{ props.adres?.straatnaam }}<br>
-          Stad: {{ props.adres?.stad }}<br>
-          Postcode: {{ props.adres?.postcode }}<br>
+          Huisnummer: {{ props.address?.housenumber }}<br>
+          Straatnaam: {{ props.address?.streetname }}<br>
+          Stad: {{ props.address?.city }}<br>
+          Postcode: {{ props.address?.zipcode }}<br>
         </p>
       </q-card-section>
 
@@ -28,7 +28,7 @@
               size="lg"
               flat
               round
-              @click="openNieuweBoomDialog"
+              @click="openNewTreeDialog"
             />
           </span>
       </q-card-section>
@@ -49,32 +49,33 @@
             <!-- list of trees -->
             <q-list bordered class="rounded-borders" style="max-width: 600px">
 
-              <q-item clickable v-ripple :active="active" v-for="(boom, index) in rawData" :key="index" class="q-px-md q-py-sm">
+              <q-item clickable v-ripple :active="active" v-for="(tree, index) in rawData" :key="index" class="q-px-md q-py-sm">
 
               <q-item>
                 <q-item-section avatar top>
-                  <!-- <TinyGalleryBtnComponent /> -->
-                  <CameraOrGalleryBtnComponent />
+                  <!-- <TinyGalleryBtnComponent />
+                  <CameraOrGalleryBtnComponent @created-image="createdImage" /> -->
                 </q-item-section>
               </q-item>
 
                 <q-item-section top>
                   <q-item-label lines="1">
-                    <span class="text-weight-medium">{{ boom.boomtype }}</span>
+                    <span class="text-weight-medium">{{ tree.treetype }}</span>
                     <span class="text-grey-8"> - Boomsoort</span>
                   </q-item-label>
                   <q-item-label caption lines="1">
-                    Hoogte: {{ boom.hoogte }} m, Diameter: {{ boom.diameter }} cm
+                    Hoogte: {{ tree.height }} m, Diameter: {{ tree.diameter }} cm
                   </q-item-label>
                 </q-item-section>
 
                 <q-item-section top side>
                   <div class="text-grey-8 q-gutter-xs">
-                    <q-btn class="gt-xs" size="12px" flat dense round icon="delete" />
+                    <q-btn class="gt-xs" size="12px" flat dense round icon="delete" @click="deleteTree(Number(tree.id))" />
                     <q-btn class="gt-xs" size="12px" flat dense round icon="done" />
                     <q-btn size="12px" flat dense round icon="more_vert" />
                   </div>
                 </q-item-section>
+
               </q-item>
 
               <q-separator spaced />
@@ -92,68 +93,85 @@
 
 import { Dialog, useDialogPluginComponent } from 'quasar'
 import { api } from 'src/boot/axios';
-import type { Adres } from 'src/models/Adres'
-import type { Boom } from 'src/models/Boom';
 import { ref } from 'vue';
-import NieuweBoomDialogComponent from 'src/components/NieuweBoomDialogComponent.vue'
+import type { Address } from 'src/models/Address'
+import type { Tree } from 'src/models/Tree';
+import CreateTreeDialogComponent from 'src/components/CreateTreeDialogComponent.vue'
 import CameraOrGalleryBtnComponent from './CameraOrGalleryBtnComponent.vue';
 import TinyGalleryBtnComponent from './TinyGalleryBtnComponent.vue';
 
-const rawData = ref<Boom[]>([])
+const { dialogRef, onDialogHide, onDialogCancel } = useDialogPluginComponent()
+const rawData = ref<Tree[]>([])
 const loading = ref(false)
 const active = ref(true)
 const props = defineProps<{
-  adres: Adres
+  address: Address
 }>()
+// defineEmits([
+// ...useDialogPluginComponent.emits
+// ])
 
-defineEmits([
-...useDialogPluginComponent.emits
-])
+getTreesByID()
 
-const { dialogRef, onDialogHide, onDialogCancel } = useDialogPluginComponent()
+const createdImage = (data: string) => {
+  // Handle the created image from CameraOrGalleryBtnComponent
+  console.log('Created image:', data);
+  return data; // Return the image data URL
+}
 
+const deleteTree = (id: number) => {
+api.delete(`/api/trees/${id}`).then(function (response) {
+      if (response.status === 200) {
+        console.log('Deleted tree with ID:', id);
+        rawData.value = rawData.value.filter(tree => tree.id !== id)
+        getTreesByID();
+      } else {
+        console.error('Error deleting tree with ID:', id);
+      }
+    })
+    .catch(function (error) {
+      console.log(error);
+    });
+  getTreesByID();
+}
 
-function openNieuweBoomDialog() {
-
+function openNewTreeDialog() {
   // Open a dialog to add a new tree
   Dialog.create({
     title: 'Nieuwe Boom Toevoegen',
     message: 'Hier kun je een nieuwe boom toevoegen.',
-    component: NieuweBoomDialogComponent,
-    persistent: true,
+    component: CreateTreeDialogComponent,
     componentProps: {
-      adres: props.adres,
-      // Bepaal het hoogste boomnummer uit de huidige lijst
-      lastBoomNummer: Math.max(0, ...rawData.value.map(b => b.boomnummer + 1 || 0))},
-    ok: {
-      label: 'Toevoegen',
-      color: 'primary'
+      address: props.address,
+      // Zoek het eerstvolgende ontbrekende boomnummer, anders hoogste + 1
+      lastTreeNumber: (() => {
+      const nummers = rawData.value.map(b => b.treenumber).sort((a, b) => a - b);
+      for (let i = 1; i <= nummers.length + 1; i++) {
+        if (!nummers.includes(i)) {
+          return i;
+        }
+      }
+      return 1;
+      })()
     },
-    cancel: {
-      label: 'Annuleren',
-      color: 'secondary'
-    }
-  }).onOk(() => {
-    console.log('Nieuwe boom toegevoegd');
+
   }).onCancel(() => {
-    console.log('Nieuwe boom toevoegen geannuleerd');
-  });
-  console.log('Nieuwe boom toevoegen dialog geopend');
+    getTreesByID();
+  })
 }
 
-api.get('/api/bomen/all/' + props.adres.id).then(
-function (response) {
-  loading.value = true;
-  console.log(response.data);
-  rawData.value = response.data;
-
-  console.log(rawData.value);
-
-}).finally(() => {
-  loading.value = false
-})
-.catch(error => {
-  console.log(error)
-});
+function getTreesByID() {
+  // Fetch all trees for the given address
+  api.get('/api/trees/all/' + props.address.id).then(
+  function (response) {
+    loading.value = true;
+    rawData.value = response.data;
+  }).finally(() => {
+    loading.value = false
+  })
+  .catch(error => {
+    console.log(error)
+  });
+}
 
 </script>
