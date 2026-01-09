@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "description": "Bomen Gids",
   "productName": "Klus4Me",
-  "author": "JaouadBeam <jkaouch@beamtracking.com>",
+  "author": "Jaouad Kaouch",
   "type": "module",
   "private": true,
   "scripts": {

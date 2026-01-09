@@ -4,6 +4,33 @@
     color: $primary;
 }
 
+.text-h8 {
+    font-weight:400;
+    color: $primary;
+}
+
+.flex-row {
+    display: flex;
+    align-items:flex-start;
+}
+
+.flex-width-10 {
+    flex: 10% !important;
+}
+
+.flex-width-30 {
+    flex: 30% !important;
+}
+.flex-width-50 {
+    flex: 50% !important;
+}
+.border-bottom-row {
+    display: flex; 
+    border-bottom: 1px solid $primary;    
+    justify-content: space-between; 
+    padding-bottom: 2px;
+}
+
 // HuisnummerDialogComponent
 .flex-add-new-tree-container {
     // color: $primary;

@@ -3,7 +3,7 @@
     <q-card style="min-width: 400px; max-width: 600px;">
 
       <q-card-section class="flex-row-title-btn-container">
-        <div class="text-h6">Nieuw Boom Toevoegen </div>
+        <div class="text-h6">Wijzig {{tree.treetype}} boomnummer {{tree.treenumber}}</div>
 
         <q-btn class="flex-row-title-btn" size="sm" flat round icon="close" @click="onDialogCancel" />
       </q-card-section>
@@ -104,17 +104,17 @@ const tree = ref<Tree>({
   },
   treeimage: [] // Initialize as an empty array
 });
-const { dialogRef, onDialogCancel, onDialogHide } = useDialogPluginComponent()
+const { dialogRef, onDialogCancel, onDialogHide } = useDialogPluginComponent();
 const form = ref();
 const valid = ref(false);
 const imagesList = ref<string[]>([]); // Array to hold image URLs
 const props = defineProps<{
-  address: Address
-  lastTreeNumber: number // Optional prop to set the last boom number
-}>()
+  address: Address;
+  lastTreeNumber: number; // Optional prop to set the last boom number
+}>();
 defineEmits([
-...useDialogPluginComponent.emits
-])
+  ...useDialogPluginComponent.emits
+]);
 
 // Watch for changes in boom to revalidate
 watch(tree, checkFormValidity, { deep: true });

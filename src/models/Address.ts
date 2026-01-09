@@ -7,5 +7,4 @@ export interface Address {
   zipcode: string;
   finished: boolean;
   date_finished: string;
-  // trees: Tree[]
 }

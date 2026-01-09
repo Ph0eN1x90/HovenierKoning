@@ -1,5 +1,7 @@
 <template>
+  <div class="flex-row">
     <q-btn
+      url="https://cdn.quasar.dev/img/avatar2.jpg"
       color="primary"
       icon="camera_alt"
       size="small"
@@ -7,7 +9,9 @@
       round
       @click="openCameraOrGallery"
     />
-    <q-separator />
+
+    <q-separator vertical />
+
     <q-btn
       color="secondary"
       icon="photo_library"
@@ -16,6 +20,7 @@
       round
       @click="openGallery"
     />
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -135,4 +140,5 @@ const openGallery = () => {
   };
   input.click();
 };
+
 </script>

@@ -1,31 +1,33 @@
 <template>
-  <div>
-    <q-gallery ref="galleryRef" class="gallery-thumbnails" :images="images.slice(0, 3)">
-      <div v-for="(image, index) in images.slice(0, 3)" :key="index" class="thumbnail">
-        <div class="q-pa-xs">
-          <img :src="image.src" @click="openGallery(index)">
+    <div ref="galleryRef" class="gallery-thumbnails" :images="images.slice(0, 3)">
+      <div v-for="(image, index) in props.treeImages.slice(0, 3)" :key="index" class="thumbnail">
+        <span>
+          <img :src="image.imageurl" @click="openGallery(index)">
           <q-tooltip :delay="500" :offset="[10, 10]">Foto {{ index + 1 }}</q-tooltip>
-        </div>
+        </span>
       </div>
-    </q-gallery>
-  </div>
+    </div>
 </template>
 
 <script setup lang="ts">
+import type { TreeImage } from 'src/models/TreeImage';
 import { ref } from 'vue';
 
-const images = ref([
-  { src: 'https://picsum.photos/200/300', title: 'Beeld 1' },
-  { src: 'https://picsum.photos/200/301', title: 'Beeld 2' },
-  { src: 'https://picsum.photos/200/302', title: 'Beeld 3' },
-  { src: 'https://picsum.photos/200/303', title: 'Beeld 4' },
-  { src: 'https://picsum.photos/200/304', title: 'Beeld 5' },
-]);
-
+const images = ref<string[]>([]);
 const galleryRef = ref();
 const openGallery = (index: number) => {
-  galleryRef.value?.open(index);
+  const gallery = galleryRef.value;
+  if (gallery) {
+    const thumbnails = gallery.querySelectorAll('.thumbnail');
+    if (thumbnails[index]) {
+      thumbnails[index].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }
 };
+const props = defineProps<{
+  treeImages: TreeImage[];
+}>();
+
 </script>
 
 <style scoped>
@@ -41,7 +43,7 @@ const openGallery = (index: number) => {
   cursor: pointer;
 }
 
-.thumbnail>div>img {
+.thumbnail>span>img {
   width: 100%;
   height: 100%;
   border-radius: 5px;
