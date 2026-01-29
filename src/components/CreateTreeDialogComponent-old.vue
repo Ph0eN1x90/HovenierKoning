@@ -1,9 +1,9 @@
 <template>
   <q-dialog ref="dialogRef" @hide="onDialogHide" >
-    <q-card style="min-width: 400px; max-width: 600px;">
+    <q-card  class="width-600px">
 
       <q-card-section class="flex-row-title-btn-container">
-        <div class="text-h6">Wijzig {{tree.treetype}} boomnummer {{tree.treenumber}}</div>
+        <div class="text-h6 primary-color">Nieuw Boom Toevoegen </div>
 
         <q-btn class="flex-row-title-btn" size="sm" flat round icon="close" @click="onDialogCancel" />
       </q-card-section>
@@ -11,8 +11,8 @@
       <q-separator />
 
       <q-card-section class="q-pa-md">
-        <div class="text-h8">{{ $props.address.streetname + ' ' + $props.address.housenumber }}</div>
-        <div class="text-h8">{{ $props.address.zipcode + ' ' + $props.address.city }}</div>
+        <div class="text-subtitle1 primary-color">{{ $props.address.streetname + ' ' + $props.address.housenumber }}</div>
+        <div class="text-subtitle1 primary-color">{{ $props.address.zipcode + ' ' + $props.address.city }}</div>
       </q-card-section>
 
       <q-card-section>
@@ -50,7 +50,6 @@
           dense
           required
           />
-          <CameraOrGalleryBtnComponent @created-image="createdImage" />
           <q-input
           v-model="tree.comment"
           name="comment"
@@ -62,6 +61,8 @@
           outlined
           dense
           />
+          <div class="flex-row-space-between">
+          <CameraOrGalleryBtnComponent @created-image="createdImage" />
           <q-checkbox
           v-model="tree.finished"
           name="afgerond"
@@ -69,7 +70,7 @@
           @update:model-value="val => { if (val) tree.date_finished = new Date().toISOString().slice(0, 10); else tree.date_finished = null }"
           dense
           />
-          <q-separator spaced />
+          </div>
         </q-form>
       </q-card-section>
       <q-separator />
@@ -104,17 +105,17 @@ const tree = ref<Tree>({
   },
   treeimage: [] // Initialize as an empty array
 });
-const { dialogRef, onDialogCancel, onDialogHide } = useDialogPluginComponent();
+const { dialogRef, onDialogCancel, onDialogHide } = useDialogPluginComponent()
 const form = ref();
 const valid = ref(false);
 const imagesList = ref<string[]>([]); // Array to hold image URLs
 const props = defineProps<{
-  address: Address;
-  lastTreeNumber: number; // Optional prop to set the last boom number
-}>();
+  address: Address
+  lastTreeNumber: number // Optional prop to set the last boom number
+}>()
 defineEmits([
-  ...useDialogPluginComponent.emits
-]);
+...useDialogPluginComponent.emits
+])
 
 // Watch for changes in boom to revalidate
 watch(tree, checkFormValidity, { deep: true });

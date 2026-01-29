@@ -3,7 +3,8 @@
     <q-table
     flat bordered
     title="Adressen Overzicht"
-    title-class="text-h6"
+    title-class="text-h6 primary-color"
+    class="width-800px"
     :loading="loading"
     :rows="rows"
     :columns="columns"
@@ -82,87 +83,106 @@
 
 <script setup lang="ts">
 
-import type { QTableColumn } from 'quasar';
-import { api } from 'src/boot/axios';
-import { ref } from 'vue';
-import { copyToClipboard } from 'quasar'
-import type { Address } from 'src/models/Address';
+  import type { QTableColumn } from 'quasar';
+  import { api } from 'src/boot/axios';
+  import { ref } from 'vue';
+  import { copyToClipboard } from 'quasar'
+  import type { Address } from 'src/models/Address';
 
-const filter = ref('');
-const loading = ref(true);
-let rawData: Address[];
-let result: Address[];
+  const filter = ref('');
+  const loading = ref(true);
+  let rawData: Address[];
+  let result: Address[];
 
-api.get('/api/address/').then(
-function (response) {
-  rawData = response.data ;
-  const filteredData = rawData.reduce((acc: Address[], current) => {
-    const existingAddress = acc.find(address => address.streetname === current.streetname);
-    if (existingAddress) {
-      existingAddress.housenumbers = existingAddress.housenumbers ? [...existingAddress.housenumbers, current.housenumber] : [current.housenumber];
-    } else {
-      acc.push({
-        ...current,
-        housenumbers: [current.housenumber],
-      });
-    }
-    return acc;
-  }, []);
+  api.get('/api/address/').then(
+  function (response) {
+    rawData = response.data ;
+    const filteredData = rawData.reduce((acc: Address[], current) => {
+      const existingAddress = acc.find(address => address.streetname === current.streetname);
+      if (existingAddress) {
+        existingAddress.housenumbers = existingAddress.housenumbers ? [...existingAddress.housenumbers, current.housenumber] : [current.housenumber];
+      } else {
+        acc.push({
+          ...current,
+          housenumbers: [current.housenumber],
+        });
+      }
+      return acc;
+    }, []);
 
-  result = filteredData.map(address => {
-    return {
-      id: address.id,
-      housenumber: address.housenumber,
-      streetname: address.streetname,
-      housenumbers: address.housenumbers,
-      city: address.city,
-      zipcode: address.zipcode,
-      finished: address.finished,
-      date_finished: address.date_finished,
-    };
+    result = filteredData.map(address => {
+      return {
+        id: address.id,
+        housenumber: address.housenumber,
+        streetname: address.streetname,
+        housenumbers: address.housenumbers,
+        city: address.city,
+        zipcode: address.zipcode,
+        finished: address.finished,
+        date_finished: address.date_finished,
+      };
+    });
+
+    result = result.map(address => {
+      const streetAddresses = rawData.filter(a => a.streetname === address.streetname);
+      const allDone = streetAddresses.length > 0 && streetAddresses.every(a => a.finished);
+      return {
+        ...address,
+        allFinished: allDone
+      };
+
+    });
+  }).finally(() => {
+    rows = result
+    loading.value = false
+  })
+  .catch(error => {
+    console.log(error)
   });
 
-  result = result.map(address => {
-    const streetAddresses = rawData.filter(a => a.streetname === address.streetname);
-    const allDone = streetAddresses.length > 0 && streetAddresses.every(a => a.finished);
-    return {
-      ...address,
-      allFinished: allDone
-    };
-
-  });
-}).finally(() => {
-  rows = result
-  loading.value = false
-})
-.catch(error => {
-  console.log(error)
-});
-
-let rows: Address[] = []
-const columns: QTableColumn[] = [
-{
-  name: 'streetname',
-  required: true,
-  label: 'Straat',
-  align: 'left',
-  field: 'streetname',
-  sortable: true,
-},
-{
-  name: 'housenumbers',
-  align: 'center',
-  label: 'Huisnummers',
-  field: 'housenumbers',
-  sortable: true,
-},
-{ name: 'city', label: 'Stad', field: 'city', sortable: true },
-{ name: 'zipcode', label: 'Postcode', field: 'zipcode', sortable: true },
-{
-  name: 'count',
-  label: 'Aantal',
-  field: 'count',
-  sortable: true },
-  { name: 'completed', label: 'Afgerond?', align: 'left', field: 'finished'}
+  let rows: Address[] = []
+  const columns: QTableColumn[] = [
+  {
+    name: 'streetname',
+    label: 'Straat',
+    field: 'streetname',
+    required: true,
+    align: 'left',
+    sortable: true,
+  },
+  {
+    name: 'housenumbers',
+    label: 'Huisnummers',
+    field: 'housenumbers',
+    align: 'center',
+    sortable: true,
+  },
+  {
+    name: 'city',
+    label: 'Stad',
+    field: 'city',
+    align: 'left',
+    sortable: true
+  },
+  {
+    name: 'zipcode',
+    label: 'Postcode',
+    field: 'zipcode',
+    align: 'center',
+    sortable: true
+  },
+  {
+    name: 'count',
+    label: 'Aantal',
+    field: 'count',
+    align: 'center',
+    sortable: true
+  },
+  {
+    name: 'completed',
+    label: 'Afgerond?',
+    field: 'finished',
+    align: 'center',
+  }
   ];
 </script>

@@ -48,44 +48,85 @@ const openCameraOrGallery = () => {
         overlay.style.left = '0';
         overlay.style.width = '100vw';
         overlay.style.height = '100vh';
-        overlay.style.background = 'rgba(0,0,0,0.8)';
+        overlay.style.background = 'rgba(0, 0, 0, 0.7)';
         overlay.style.display = 'flex';
+        overlay.style.flexDirection = 'column';
         overlay.style.alignItems = 'center';
         overlay.style.justifyContent = 'center';
         overlay.style.zIndex = '9999';
+
+        // Container voor video
+        const videoContainer = document.createElement('div');
+        videoContainer.style.position = 'relative';
+        videoContainer.style.width = '90vw';
+        videoContainer.style.maxWidth = '600px';
+        videoContainer.style.height = 'auto';
+        videoContainer.style.maxHeight = '80vh';
+        videoContainer.style.borderRadius = '12px';
+        videoContainer.style.overflow = 'hidden';
+        videoContainer.style.boxShadow = '0 8px 32px rgba(0, 0, 0, 0.4)';
 
         // Videoview
         const video = document.createElement('video');
         video.autoplay = true;
         video.srcObject = stream;
-        video.style.maxWidth = '90vw';
-        video.style.maxHeight = '70vh';
-        overlay.appendChild(video);
+        video.style.width = '100%';
+        video.style.height = 'auto';
+        video.style.display = 'block';
+        videoContainer.appendChild(video);
 
-        // Capture knop
+        // Capture knop (styled as icon button)
         const captureBtn = document.createElement('button');
-        captureBtn.innerText = 'Neem foto';
-        captureBtn.style.marginTop = '20px';
-        captureBtn.style.padding = '10px 20px';
-        captureBtn.style.fontSize = '16px';
+        captureBtn.innerHTML = '📷';
+        captureBtn.style.position = 'absolute';
+        captureBtn.style.bottom = '20px';
+        captureBtn.style.left = '50%';
+        captureBtn.style.transform = 'translateX(-50%)';
+        captureBtn.style.width = '70px';
+        captureBtn.style.height = '70px';
+        captureBtn.style.borderRadius = '50%';
+        captureBtn.style.border = '4px solid white';
+        captureBtn.style.background = 'rgba(255, 255, 255, 0.3)';
+        captureBtn.style.fontSize = '32px';
         captureBtn.style.cursor = 'pointer';
+        captureBtn.style.display = 'flex';
+        captureBtn.style.alignItems = 'center';
+        captureBtn.style.justifyContent = 'center';
+        captureBtn.style.backdropFilter = 'blur(10px)';
 
-        // Sluit knop
+        // Sluit knop (styled as icon button)
         const closeBtn = document.createElement('button');
-        closeBtn.innerText = 'Sluiten';
-        closeBtn.style.marginLeft = '10px';
-        closeBtn.style.padding = '10px 20px';
-        closeBtn.style.fontSize = '16px';
+        closeBtn.innerHTML = '✕';
+        closeBtn.style.position = 'absolute';
+        closeBtn.style.top = '20px';
+        closeBtn.style.right = '20px';
+        closeBtn.style.width = '50px';
+        closeBtn.style.height = '50px';
+        closeBtn.style.borderRadius = '50%';
+        closeBtn.style.border = 'none';
+        closeBtn.style.background = 'rgba(0, 0, 0, 0.5)';
+        closeBtn.style.color = 'white';
+        closeBtn.style.fontSize = '24px';
         closeBtn.style.cursor = 'pointer';
+        closeBtn.style.display = 'flex';
+        closeBtn.style.justifyContent = 'center';
+        closeBtn.style.backdropFilter = 'blur(10px)';
 
-        const btnWrapper = document.createElement('div');
-        btnWrapper.style.display = 'flex';
-        btnWrapper.style.justifyContent = 'center';
-        btnWrapper.appendChild(captureBtn);
-        btnWrapper.appendChild(closeBtn);
-        overlay.appendChild(btnWrapper);
-
+        videoContainer.appendChild(captureBtn);
+        videoContainer.appendChild(closeBtn);
+        overlay.appendChild(videoContainer);
         document.body.appendChild(overlay);
+
+        // Voorkom dat clicks binnen de video container de overlay sluiten
+        videoContainer.onclick = (e) => {
+          e.stopPropagation();
+        };
+
+        // Sluit bij click op overlay (buiten de video)
+        overlay.onclick = () => {
+          stream.getTracks().forEach(track => track.stop());
+          document.body.removeChild(overlay);
+        };
 
         captureBtn.onclick = () => {
           const canvas = document.createElement('canvas');

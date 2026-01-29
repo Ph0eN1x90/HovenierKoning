@@ -1,17 +1,38 @@
-// app global css in SCSS form
-.text-h6 {
-    font-weight: 600;
+// app global css in SCSS format
+.primary-color {
     color: $primary;
+}   
+
+.width-600px {
+    width: 600px !important;
+    max-width: 600px !important;
 }
 
-.text-h8 {
-    font-weight:400;
-    color: $primary;
+.width-800px {
+    width: 800px !important;
+    max-width: 800px !important;
+}
+
+.no-image {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 300px;
+  background-color: #f5f5f5;
+  color: #999;
+  font-style: italic;
+  border-radius: 8px;
+  margin-bottom: 16px;
 }
 
 .flex-row {
     display: flex;
     align-items:flex-start;
+}
+
+.flex-row-space-between {
+    display: flex;
+    justify-content: space-between;
 }
 
 .flex-width-10 {
@@ -33,7 +54,6 @@
 
 // HuisnummerDialogComponent
 .flex-add-new-tree-container {
-    // color: $primary;
     display: flex;
     justify-content: space-between;
     align-items: baseline;
@@ -54,5 +74,139 @@
 }
 
 .list-of-trees-housenumer-dialog {
-    margin-top: 20%;
+    
 }
+
+.card-thumbnail-section {
+    position: relative;
+    align-items: center;
+}
+
+.card-thumbnail {
+    width: 9em;
+    height: 6em;
+}
+
+.card-thumbnail-text {
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.card-thumbnail-section:hover .card-thumbnail-text {
+    opacity: 1;
+}
+
+// TreeDetailsDialogComponent
+.tree-header {
+  text-align: center;
+}
+.tree-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.info-section h2 {
+  color: #2c3e50;
+  margin-bottom: 1rem;
+  border-bottom: 2px solid var(--q-primary);
+  padding-bottom: 0.5rem;
+}
+
+.info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.info-item .label {
+  font-weight: 600;
+  color: #7f8c8d;
+  font-size: 0.9rem;
+}
+
+.info-item .value {
+  color: #2c3e50;
+  font-size: 1rem;
+}
+
+.info-section p {
+  line-height: 1.6;
+  color: #34495e;
+}
+
+// ImageGallery in TreeDetailsDialogComponent
+.image-container {
+    display: flex;
+    gap: 31px;
+    flex-wrap: wrap;
+  }
+
+  .image-gallery {
+    width: 9em;
+    position: relative;
+    aspect-ratio: 1;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid $primary;
+  }
+
+  .preview-image {
+    height: 100%;
+  }
+
+  .delete-btn {
+    position: absolute;
+    right: 0px;
+    background-color: transparent;
+  }
+
+// Row items in lists or tables based on finished status
+.row-item {
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+
+.finished-row-item {
+  background-color: rgba($primary, 0.2);
+  color: $primary;
+}
+
+.unfinished-row-item {
+  background-color: transparent;
+}
+
+// CarouselComponent
+// .thumbnails-carousel {
+    
+// }
+
+// .thumbnail-slide {
+//   border: 3px solid transparent;
+//   transition: border-color 0.3s;
+// }
+
+// .thumbnail-active {
+//   border-color: var(--q-primary);
+//   border-radius: 4px;
+// }
+
+// .cursor-pointer {
+//   cursor: pointer;
+// }
+
+// .no-image {
+//   color: #95a5a6;
+//   font-size: 1.2rem;
+// }

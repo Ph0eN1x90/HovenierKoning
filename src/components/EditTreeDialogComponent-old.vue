@@ -1,9 +1,9 @@
 <template>
   <q-dialog ref="dialogRef" @hide="onDialogHide" >
-    <q-card style="min-width: 400px; max-width: 600px;">
+    <q-card  class="width-600px">
 
       <q-card-section class="flex-row-title-btn-container">
-        <div class="text-h6">Nieuw Boom Toevoegen </div>
+        <div class="text-h6 primary-color">Wijzig {{tree.treetype}} boomnummer {{tree.treenumber}}</div>
 
         <q-btn class="flex-row-title-btn" size="sm" flat round icon="close" @click="onDialogCancel" />
       </q-card-section>
@@ -11,8 +11,8 @@
       <q-separator />
 
       <q-card-section class="q-pa-md">
-        <div class="text-h8">{{ $props.address.streetname + ' ' + $props.address.housenumber }}</div>
-        <div class="text-h8">{{ $props.address.zipcode + ' ' + $props.address.city }}</div>
+        <div class="text-subtitle1 primary-color">{{ $props.address.streetname + ' ' + $props.address.housenumber }}</div>
+        <div class="text-subtitle1 primary-color">{{ $props.address.zipcode + ' ' + $props.address.city }}</div>
       </q-card-section>
 
       <q-card-section>
@@ -24,6 +24,7 @@
           type="text"
           :rules="[v => !!v || 'Boomtype is verplicht']"
           lazy-rules
+          clearable
           outlined
           dense
           required
@@ -35,6 +36,7 @@
           type="number"
           :rules="[v => v >= 0 || 'Diameter moet positief zijn']"
           lazy-rules
+          clearable
           outlined
           dense
           required
@@ -46,16 +48,21 @@
           type="number"
           :rules="[v => v >= 0 || 'Hoogte moet positief zijn']"
           lazy-rules
+          clearable
           outlined
           dense
           required
           />
-          <CameraOrGalleryBtnComponent @created-image="createdImage" />
+          <div class="flex-row-space-between">
+            <TinyGalleryBtnComponent class="gallery-width" v-if="tree.treeimage" :treeImages="tree.treeimage" />
+            <CameraOrGalleryBtnComponent @created-image="createdImage" />
+          </div>
           <q-input
           v-model="tree.comment"
           name="comment"
           :rules="[v => v.length <= 500 || 'Commentaar mag maximaal 500 tekens zijn']"
           lazy-rules
+          clearable
           maxlength="500"
           label="Commentaar"
           type="textarea"
@@ -83,38 +90,24 @@
 
 <script setup lang="ts">
 
-import { api } from 'src/boot/axios';
 import { ref, watch } from 'vue';
 import type { Address } from 'src/models/Address';
 import type { Tree } from 'src/models/Tree';
 import { useDialogPluginComponent } from 'quasar';
 import CameraOrGalleryBtnComponent from './CameraOrGalleryBtnComponent.vue';
 
-const tree = ref<Tree>({
-  id: null,
-  treenumber: 0,
-  treetype: '',
-  diameter: 0,
-  height: 0,
-  date_finished: null,
-  finished: false,
-  comment: '',
-  address: {
-    id: 0,
-  },
-  treeimage: [] // Initialize as an empty array
-});
-const { dialogRef, onDialogCancel, onDialogHide } = useDialogPluginComponent()
+const { dialogRef, onDialogCancel, onDialogHide } = useDialogPluginComponent();
 const form = ref();
 const valid = ref(false);
-const imagesList = ref<string[]>([]); // Array to hold image URLs
+const imagesList = ref<string[]>([]);
 const props = defineProps<{
-  address: Address
-  lastTreeNumber: number // Optional prop to set the last boom number
-}>()
+  address: Address;
+  tree: Tree;
+}>();
+const tree = ref<Tree>({ ...props.tree });
 defineEmits([
-...useDialogPluginComponent.emits
-])
+  ...useDialogPluginComponent.emits
+]);
 
 // Watch for changes in boom to revalidate
 watch(tree, checkFormValidity, { deep: true });
@@ -132,22 +125,13 @@ const createdImage = (data: string) => {
 }
 
 function onSubmit() {
-  if (form.value) {
+ if (form.value) {
     form.value.validate().then((isValid: boolean) => {
       if (isValid) {
 
-        tree.value.treenumber = props.lastTreeNumber;
-        tree.value.address.id = props.address.id;
+        console.log('Form is valid, submitting data:', tree.value);
 
-        imagesList.value.forEach((imageUrl) => {
-          tree.value.treeimage.push({
-            imageurl: imageUrl,
-            id: null,
-            tree: { id: tree.value.id }
-          });
-        });
-
-        saveTree();
+        // updateTree();
 
         onDialogCancel();
       } else {
@@ -160,37 +144,9 @@ function onSubmit() {
   }
 }
 
-function saveTree() {
-console.log("before post Tree save", tree)
-  api.post('/api/trees/save', tree.value).then(function (response) {
-    if (response.status === 200 || response.status === 201) {
-      console.log('Tree saved successfully:', response.data);
-      // saveTreeImages();
-    } else {
-      console.error('Error saving tree:', response);
-    }
-  }).catch(function (error) {
-    console.error('Error saving tree:', error);
-  });
-}
 
 function onReset() {
-  // Reset the form fields if needed
-  tree.value = {
-    id: null,
-    treenumber: 0,
-    treetype: '',
-    diameter: 0,
-    height: 0,
-    date_finished: null,
-    finished: false,
-    comment: '',
-    address: {
-      id: 0,
-    },
-    treeimage: []
-  }
-  valid.value = false;
+  form.value.reset();
 }
 
 </script>
