@@ -72,7 +72,7 @@
               <q-img
               class="card-thumbnail rounded-borders"
               :style="!tree.treeimage.length ? 'opacity: 0.5' : ''"
-              :src="tree.treeimage?.[0]?.imageurl || 'src/assets/images/thumbnail-placeholder.png'"
+              :src="tree.treeimage[0]?.imageurl || 'src/assets/images/thumbnail-placeholder.png'"
               >
               <div class="text-caption text-center card-thumbnail-text">{{ tree.treeimage?.length }} fotos</div>
             </q-img>
@@ -186,10 +186,11 @@
 
   function getTreesByID() {
     // Fetch all trees for the given address
+    loading.value = true;
     api.get('/api/trees/all/' + props.address.id).then(
     function (response) {
-      loading.value = true;
       rawData.value = response.data;
+      console.log('Fetched trees for address ID', props.address.id, ':', rawData.value);
     }).finally(() => {
       loading.value = false
     })

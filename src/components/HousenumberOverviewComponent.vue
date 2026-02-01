@@ -25,11 +25,10 @@
     </template>
 
     <template #body="props" >
-
       <q-tr :props="props" @click="showDialog(props.row)" class="cursor-pointer" :class="props.row.finished ? 'finished-row-item' : 'unfinished-row-item'">
 
         <q-td key="housenumber" :props="props">
-          <q-btn flat color="primary" @click="copyToClipboard(`${props.row.straatnaam} ${props.row.huisnummer} ${props.row.stad} ${props.row.postcode}`)">
+          <q-btn flat color="primary" @click="copyToClipboard(`${props.row.streetname} ${props.row.housenumber} ${props.row.city} ${props.row.zipcode}`)">
             {{ props.row.housenumber }}
           </q-btn>
         </q-td>
@@ -79,12 +78,13 @@
   import { ref } from 'vue';
   import type { Address } from 'src/models/Address';
   import { useRoute } from 'vue-router';
-  import HousenumberDialogComponent from './HousenumberDialogComponent.vue';
+import HousenumberDialogComponent from './HousenumberDialogComponent.vue';
 
-  const route = useRoute();
+const route = useRoute();
   const address = ref(route.params.address)
   const filter = ref('');
   const loading = ref(true);
+  let result: Address[];
   let rawData: Address[];
 
   function showDialog(row: Address) {
@@ -93,33 +93,46 @@
       componentProps: {
         address: row,
       }
-    })
+    }).onDismiss(() => {
+      // Refresh data when dialog is dismissed to update finished status
+      refreshAddresses();
+    }).onCancel(() => {
+      // Refresh data when dialog is cancelled to update finished status
+      refreshAddresses();
+    });
   }
 
-  api.get('/api/address/street/' + address.value?.toString()).then(
-  function (response) {
-    rawData = response.data ;
-    rows = rawData.map((item: Address) => {
-      return {
-        id: item.id,
-        streetname: item.streetname,
-        housenumber: item.housenumber,
-        housenumbers: item.housenumbers,
-        city: item.city,
-        zipcode: item.zipcode,
-        finished: item.finished,
-        date_finished: item.date_finished,
-      }
-    });
+  function refreshAddresses() {
+    api.get('/api/address/street/' + address.value?.toString()).then(
+      function (response) {
+        rawData = response.data;
 
-  }).finally(() => {
-    loading.value = false
-  })
-  .catch(error => {
-    console.log(error)
-  });
+        result = rawData.map((item: Address) => {
 
-  let rows: Address[] = []
+          return {
+            id: item.id,
+            streetname: item.streetname,
+            housenumber: item.housenumber,
+            housenumbers: item.housenumbers,
+            city: item.city,
+            zipcode: item.zipcode,
+            finished: item.finished,
+            date_finished: item.date_finished,
+            trees: item.trees,
+          };
+        });
+      }).finally(() => {
+        rows.value = result;
+        loading.value = false;
+      }).catch(error => {
+        console.log(error);
+      });
+  }
+
+  // Initial load
+  refreshAddresses();
+
+  const rows = ref<Address[]>([]);
   const columns: QTableColumn[] = [
   {
     name: 'housenumber',

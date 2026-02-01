@@ -184,7 +184,9 @@
     const currentImages = tree.value.treeimage.map(img => img.imageurl).sort();
     const originalImages = original.treeimage.map(img => img.imageurl).sort();
 
-    const imagesChanged = currentImages.some((url, idx) => url !== originalImages[idx]);
+    const imagesChanged =
+      currentImages.length !== originalImages.length ||
+      currentImages.some((url, idx) => url !== originalImages[idx]);
 
     return (
       tree.value.treetype !== original.treetype ||
@@ -212,9 +214,7 @@
       date_finished: null,
       finished: false,
       comment: '',
-      address: {
-        id: props.address.id
-      },
+      address: props.address,
       treeimage: []
     }
     );
@@ -258,9 +258,7 @@
           date_finished: null,
           finished: false,
           comment: '',
-          address: {
-            id: props.address.id
-          },
+          address: props.address,
           treeimage: []
         };
       }

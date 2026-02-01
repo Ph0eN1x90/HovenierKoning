@@ -26,8 +26,9 @@
     <template #body="props">
       <q-tr
       :props="props"
-      @click="$router.push({ name: 'address-overview', params: { address: props.row.streetname } })"
-      :class="{ 'bg-primary': props.row.finished }"
+      @click="$router.push({ name: 'housenumber-overview', params: { address: props.row.streetname } })"
+      :class="props.row.allFinished ? 'finished-row-item' : 'unfinished-row-item'"
+      class="cursor-pointer"
       >
       <q-td key="streetname" :props="props">
         <q-btn flat color="primary" @click.stop="copyToClipboard(`${props.row.streetname}`)">
@@ -52,8 +53,8 @@
       </q-td>
 
       <q-td key="completed" :props="props">
-        <span :style="{ color: props.row.finished ? 'green' : 'red' }">
-          {{ props.row.finished ? "Ja" : "Nee" }}
+        <span :style="{ color: props.row.allFinished ? 'green' : 'red' }">
+          {{ props.row.allFinished ? "Ja" : "Nee" }}
         </span>
       </q-td>
     </q-tr>
@@ -120,6 +121,7 @@
         zipcode: address.zipcode,
         finished: address.finished,
         date_finished: address.date_finished,
+        trees: address.trees,
       };
     });
 

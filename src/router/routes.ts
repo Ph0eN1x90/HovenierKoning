@@ -12,7 +12,7 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/address',
     component: MainLayout,
-    children: [{ path: '/address/:address', name: 'address-overview', component: HousenumberOverview, props: true }],
+    children: [{ path: '/address/:address', name: 'housenumber-overview', component: HousenumberOverview, props: true }],
   },
   {
     path: '/:catchAll(.*)*',
