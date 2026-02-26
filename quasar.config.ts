@@ -12,6 +12,7 @@ export default defineConfig((/* ctx */) => {
     // --> boot files are part of "main.js"
     // https://v2.quasar.dev/quasar-cli-vite/boot-files
     boot: [
+      'axios'
     ],
 
     // https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#css
@@ -97,7 +98,7 @@ export default defineConfig((/* ctx */) => {
       // directives: [],
 
       // Quasar plugins
-      plugins: ['Dialog']
+      plugins: ['Dialog', 'Notify']
     },
 
     // animations: 'all', // --- includes all animations
@@ -143,15 +144,64 @@ export default defineConfig((/* ctx */) => {
 
     // https://v2.quasar.dev/quasar-cli-vite/developing-pwa/configuring-pwa
     pwa: {
-      workboxMode: 'GenerateSW' // 'GenerateSW' or 'InjectManifest'
-      // swFilename: 'sw.js',
-      // manifestFilename: 'manifest.json',
-      // extendManifestJson (json) {},
-      // useCredentialsForManifestTag: true,
-      // injectPwaMetaTags: false,
-      // extendPWACustomSWConf (esbuildConf) {},
-      // extendGenerateSWOptions (cfg) {},
-      // extendInjectManifestOptions (cfg) {}
+      workboxMode: 'GenerateSW', // 'GenerateSW' or 'InjectManifest'
+
+      // Manifest configuration
+      manifest: {
+        name: 'HovenierKoning',
+        short_name: 'HovenierKoning',
+        description: 'Bomeninventarisatie applicatie voor hoveniers',
+        display: 'standalone',
+        orientation: 'portrait',
+        background_color: '#ffffff',
+        theme_color: '#1976d2',
+        icons: [
+          {
+            src: 'icons/icon-128x128.png',
+            sizes: '128x128',
+            type: 'image/png'
+          },
+          {
+            src: 'icons/icon-192x192.png',
+            sizes: '192x192',
+            type: 'image/png'
+          },
+          {
+            src: 'icons/icon-256x256.png',
+            sizes: '256x256',
+            type: 'image/png'
+          },
+          {
+            src: 'icons/icon-384x384.png',
+            sizes: '384x384',
+            type: 'image/png'
+          },
+          {
+            src: 'icons/icon-512x512.png',
+            sizes: '512x512',
+            type: 'image/png'
+          }
+        ]
+      },
+
+      // Workbox configuration for service worker
+      extendGenerateSWOptions(cfg) {
+        cfg.skipWaiting = true;
+        cfg.clientsClaim = true;
+        cfg.runtimeCaching = [
+          {
+            urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp)$/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'image-cache',
+              expiration: {
+                maxEntries: 100,
+                maxAgeSeconds: 30 * 24 * 60 * 60 // 30 days
+              }
+            }
+          }
+        ];
+      }
     },
 
     // Full list of options: https://v2.quasar.dev/quasar-cli-vite/developing-cordova-apps/configuring-cordova

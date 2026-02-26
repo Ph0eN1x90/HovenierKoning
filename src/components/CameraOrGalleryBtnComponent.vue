@@ -26,12 +26,56 @@
 <script setup lang="ts">
 import { useQuasar } from 'quasar';
 import { ref } from 'vue';
+import imageCompression from 'browser-image-compression';
 
 const $q = useQuasar();
 const dataURL = ref<string>('');
 const emit = defineEmits<{
   (emitCreatedImage: 'createdImage', image: string): void
 }>();
+
+const compressionOptions = {
+  maxSizeMB: 1,
+  maxWidthOrHeight: 1920,
+  useWebWorker: true,
+  quality: 0.8
+};
+
+const compressImage = async (file: File): Promise<string> => {
+  try {
+    const compressedFile = await imageCompression(file, compressionOptions);
+
+    // Convert compressed file to base64
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const result = typeof e.target?.result === 'string' ? e.target.result : '';
+        resolve(result);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(compressedFile);
+    });
+  } catch (error) {
+    console.error('Compressie fout:', error);
+    throw error;
+  }
+};
+
+const compressCanvas = async (canvas: HTMLCanvasElement): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (!blob) {
+        reject(new Error('Canvas to Blob failed'));
+        return;
+      }
+
+      const file = new File([blob], 'camera-capture.jpg', { type: 'image/jpeg' });
+      compressImage(file)
+        .then(compressed => resolve(compressed))
+        .catch(error => reject(error instanceof Error ? error : new Error(String(error))));
+    }, 'image/jpeg', 0.95);
+  });
+};
 
 const emitCreatedImage = () => {
   emit('createdImage', dataURL.value);
@@ -128,15 +172,36 @@ const openCameraOrGallery = () => {
           document.body.removeChild(overlay);
         };
 
-        captureBtn.onclick = () => {
+        captureBtn.onclick = async () => {
           const canvas = document.createElement('canvas');
           canvas.width = video.videoWidth;
           canvas.height = video.videoHeight;
           const ctx = canvas.getContext('2d');
           ctx?.drawImage(video, 0, 0, canvas.width, canvas.height);
-          dataURL.value = canvas.toDataURL('image/jpeg');
-          // doe hier iets met de afbeelding
-          emitCreatedImage();
+
+          try {
+            // Comprimeer de foto voordat deze wordt ge-emit
+            dataURL.value = await compressCanvas(canvas);
+            emitCreatedImage();
+
+            $q.notify({
+              message: 'Foto succesvol opgeslagen en gecomprimeerd',
+              color: 'positive',
+              icon: 'check_circle',
+              position: 'top',
+              timeout: 2000
+            });
+          } catch (error) {
+            console.error('Compressie fout:', error);
+            $q.notify({
+              message: 'Foto opslaan mislukt',
+              color: 'negative',
+              icon: 'error',
+              position: 'top',
+              timeout: 3000
+            });
+          }
+
           // Stop de stream en sluit overlay
           stream.getTracks().forEach(track => track.stop());
           document.body.removeChild(overlay);
@@ -166,17 +231,33 @@ const openGallery = () => {
   const input = document.createElement('input');
   input.type = 'file';
   input.accept = 'image/*';
-  input.onchange = (event: Event) => {
+  input.onchange = async (event: Event) => {
     const target = event.target as HTMLInputElement;
     if (target.files && target.files[0]) {
       const file = target.files[0];
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        dataURL.value = typeof e.target?.result === 'string' ? e.target.result : '';
-        // doe hier iets met de afbeelding
+
+      try {
+        // Comprimeer de foto voordat deze wordt ge-emit
+        dataURL.value = await compressImage(file);
         emitCreatedImage();
-      };
-      reader.readAsDataURL(file);
+
+        $q.notify({
+          message: 'Foto succesvol geüpload en gecomprimeerd',
+          color: 'positive',
+          icon: 'check_circle',
+          position: 'top',
+          timeout: 2000
+        });
+      } catch (error) {
+        console.error('Upload/compressie fout:', error);
+        $q.notify({
+          message: 'Foto uploaden mislukt',
+          color: 'negative',
+          icon: 'error',
+          position: 'top',
+          timeout: 3000
+        });
+      }
     }
   };
   input.click();

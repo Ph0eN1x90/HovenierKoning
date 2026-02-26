@@ -72,7 +72,7 @@
               <q-img
               class="card-thumbnail rounded-borders"
               :style="!tree.treeimage.length ? 'opacity: 0.5' : ''"
-              :src="tree.treeimage[0]?.imageurl || 'src/assets/images/thumbnail-placeholder.png'"
+              :src="tree.treeimage[0]?.imageurl || placeholderUrl"
               >
               <div class="text-caption text-center card-thumbnail-text">{{ tree.treeimage?.length }} fotos</div>
             </q-img>
@@ -114,16 +114,17 @@
 <script setup lang="ts">
 
   import { Dialog, useDialogPluginComponent } from 'quasar'
-  import { api } from 'src/boot/axios';
   import { ref } from 'vue';
   import type { Address } from 'src/models/Address'
   import type { Tree } from 'src/models/Tree';
   import TreeFormDialogComponent from 'src/components/TreeFormDialogComponent.vue'
   import TreeDetailsDialogComponent from './TreeDetailsDialogComponent.vue';
+  import { useApi } from '../composables/useApi';
 
   const { dialogRef, onDialogHide, onDialogCancel } = useDialogPluginComponent()
+  const placeholderUrl = new URL('../assets/images/thumbnail-placeholder.png', import.meta.url).href
+  const { loading, fetchData, deleteData } = useApi();
   const rawData = ref<Tree[]>([])
-  const loading = ref(false)
   const active = ref(true)
   const props = defineProps<{
     address: Address
@@ -132,20 +133,18 @@
   ...useDialogPluginComponent.emits
   ])
 
-  getTreesByID()
+  void loadTrees();
 
-  const deleteTree = (id: number) => {
-    api.delete(`/api/trees/${id}`).then(function (response) {
-      if (response.status === 200) {
-        console.log('Deleted tree with ID:', id);
-        rawData.value = rawData.value.filter(tree => tree.id !== id)
-      } else {
-        console.error('Error deleting tree with ID:', id);
-      }
-    })
-    .catch(function (error) {
-      console.log(error);
-    });
+  const deleteTree = async (id: number) => {
+    const treeToDelete = rawData.value.find(tree => tree.id === id);
+    const description = treeToDelete
+      ? `Boom ${treeToDelete.treetype} (#${treeToDelete.treenumber}) verwijderen`
+      : 'Boom verwijderen';
+
+    const response = await deleteData(`/api/trees/${id}`, 'Boom succesvol verwijderd', description, treeToDelete);
+    if (response) {
+      rawData.value = rawData.value.filter(tree => tree.id !== id);
+    }
   }
 
   const editTree = (tree: Tree) => {
@@ -155,8 +154,8 @@
         address: props.address,
         tree: tree
       }
-    }).onDismiss(() => {
-      getTreesByID();
+    }).onOk(() => {
+      void loadTrees();
     });
   }
 
@@ -177,26 +176,25 @@
         })()
       },
 
-    }).onCancel(() => {
-      getTreesByID();
-    }).onDismiss(() => {
-      getTreesByID();
+    }).onOk(() => {
+      void loadTrees();
     });
   }
 
-  function getTreesByID() {
-    // Fetch all trees for the given address
-    loading.value = true;
-    api.get('/api/trees/all/' + props.address.id).then(
-    function (response) {
-      rawData.value = response.data;
-      console.log('Fetched trees for address ID', props.address.id, ':', rawData.value);
-    }).finally(() => {
-      loading.value = false
-    })
-    .catch(error => {
-      console.log(error)
-    });
+  async function loadTrees() {
+    // Always load trees through API composable.
+    // Online: network + cache update
+    // Offline: IndexedDB fallback with hydrated treeimage data
+    const data = await fetchData<Tree[]>(`/api/trees/all/${props.address.id}`);
+    if (data) {
+      rawData.value = data;
+      return;
+    }
+
+    // Last fallback for legacy cached addresses without tree hydration
+    if (!navigator.onLine && props.address.trees && props.address.trees.length > 0) {
+      rawData.value = props.address.trees;
+    }
   }
 
   function openTreeDetailsDialog(index: number) {

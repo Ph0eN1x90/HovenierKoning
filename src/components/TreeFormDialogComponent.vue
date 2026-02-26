@@ -141,21 +141,21 @@
       <q-separator />
 
       <q-card-actions align="right">
-        <q-btn color="primary" label="Opslaan" @click="onSubmit" :disable="!canSave" />
-        <q-btn flat label="Annuleren" @click="onDialogCancel" />
+        <q-btn color="primary" label="Opslaan" @click="onSubmit" :disable="!canSave" :loading="loading" />
+        <q-btn flat label="Annuleren" @click="onDialogCancel" :disable="loading" />
       </q-card-actions>
     </q-card>
   </q-dialog>
 </template>
 
 <script setup lang="ts">
-  import { api } from 'src/boot/axios';
   import { ref, watch, computed } from 'vue';
   import type { Address } from 'src/models/Address';
   import type { Tree } from 'src/models/Tree';
   import { useDialogPluginComponent } from 'quasar';
   import CameraOrGalleryBtnComponent from './CameraOrGalleryBtnComponent.vue';
   import CarouselComponent from './CarouselComponent.vue';
+  import { useApi } from '../composables/useApi';
 
   const props = defineProps<{
     address: Address;
@@ -163,7 +163,8 @@
     lastTreeNumber?: number;
   }>();
 
-  const { dialogRef, onDialogCancel, onDialogHide } = useDialogPluginComponent();
+  const { dialogRef, onDialogCancel, onDialogOK, onDialogHide } = useDialogPluginComponent();
+  const { loading, postData, putData } = useApi();
 
   defineEmits([...useDialogPluginComponent.emits]);
 
@@ -264,21 +265,22 @@
       }
     };
 
-    const onSubmit = () => {
-      form.value?.validate().then((isValid: boolean) => {
-        if (!isValid) return;
+    const onSubmit = async () => {
+      const isValid = await form.value?.validate();
+      if (!isValid) return;
 
-        const apiCall = isEditMode.value
-        ? api.put(`/api/trees/${tree.value.id}`, tree.value)
-        : api.post('/api/trees/save', tree.value);
-
-        apiCall
-        .then(() => {
-          onDialogCancel();
-        })
-        .catch((error) => {
-          console.error(`Error ${isEditMode.value ? 'updating' : 'creating'} tree:`, error);
-        });
-      });
+      if (isEditMode.value) {
+        const description = `Boom ${tree.value.treetype} (#${tree.value.treenumber}) wijzigen`;
+        const response = await putData(`/api/trees/${tree.value.id}`, tree.value, 'Boom succesvol bijgewerkt', description);
+        if (response) {
+          onDialogOK(response);
+        }
+      } else {
+        const description = `Nieuwe boom ${tree.value.treetype} (#${tree.value.treenumber}) toevoegen`;
+        const response = await postData('/api/trees/save', tree.value, 'Boom succesvol opgeslagen', description);
+        if (response) {
+          onDialogOK(response);
+        }
+      }
     };
   </script>

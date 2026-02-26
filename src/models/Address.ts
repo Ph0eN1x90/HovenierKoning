@@ -8,6 +8,7 @@ export interface Address {
   housenumbers: number[];
   zipcode: string;
   finished: boolean;
-  date_finished: string;
+  date_finished: string | null;
   trees: Tree[];
+  allFinished?: boolean; // Calculated field for grouped addresses
 }
