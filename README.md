@@ -1,40 +1,101 @@
-# Klus4Me (hovenierkoning)
+# HovenierKoning (Klus4Me)
 
-Bomen Gids
+Bomeninventarisatie-app gebouwd met Quasar Framework (Vue 3 + TypeScript).
 
-## Install the dependencies
+## Vereisten
+
+- Node.js 18+
+- npm 9+
+
+## Installatie
+
 ```bash
-yarn
-# or
 npm install
 ```
 
-### Start the app in development mode (hot-code reloading, error reporting, etc.)
+## Development
+
+Start de app in development mode:
+
 ```bash
 quasar dev
 ```
 
+Start in PWA development mode:
 
-### Lint the files
 ```bash
-yarn lint
-# or
-npm run lint
+quasar dev -m pwa
 ```
 
+## Build
 
-### Format the files
-```bash
-yarn format
-# or
-npm run format
-```
+Standaard (SPA) build:
 
-
-### Build the app for production
 ```bash
 quasar build
 ```
 
-### Customize the configuration
-See [Configuring quasar.config.js](https://v2.quasar.dev/quasar-cli-vite/quasar-config-js).
+PWA build (met service worker):
+
+```bash
+quasar build -m pwa
+```
+
+## Build lokaal serveren
+
+Na een build kan je de output lokaal runnen met Quasar Serve:
+
+```bash
+quasar serve dist/spa
+```
+
+Voor PWA build output:
+
+```bash
+quasar serve dist/pwa
+```
+
+Gebruik `--history` enkel wanneer je router in history mode staat.
+
+## Codekwaliteit
+
+Lint:
+
+```bash
+eslint -c ./eslint.config.js "./src*/**/*.{ts,js,mjs,cjs,vue}"
+```
+
+Format:
+
+```bash
+prettier --write "**/*.{js,ts,vue,scss,html,md,json}" --ignore-path .gitignore
+```
+
+## Alternatief via npm scripts
+
+Je kan dezelfde Quasar workflow ook via scripts starten:
+
+- `npm run dev` → `quasar dev`
+- `npm run dev:pwa` → `quasar dev -m pwa`
+- `npm run build` → `quasar build`
+- `npm run build:pwa` → `quasar build -m pwa`
+- `npm run lint` → ESLint controle
+- `npm run format` → Prettier formatting
+
+## Projectstructuur (kern)
+
+- `src/components` – UI componenten
+- `src/composables` – herbruikbare logica
+- `src/layouts` – app layout(s)
+- `src/pages` – router pagina’s
+- `src/boot` – Quasar boot files (startup initialisatie)
+
+## Configuratie
+
+- Quasar configuratie: `quasar.config.ts`
+- API boot/provisioning: `src/boot/axios.js`
+
+Zie ook de Quasar documentatie:
+
+- https://quasar.dev
+- https://v2.quasar.dev/quasar-cli-vite/quasar-config-file

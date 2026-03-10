@@ -45,7 +45,6 @@ export async function convertImageUrlToBase64(url: string): Promise<string> {
 export async function convertTreeImagesToBase64(images: TreeImage[]): Promise<TreeImage[]> {
   if (images.length === 0) return [];
 
-  console.log('[ImageCache] Starting conversion of', images.length, 'images');
   const batchSize = 5;
   const converted: TreeImage[] = [];
 
@@ -61,9 +60,7 @@ export async function convertTreeImagesToBase64(images: TreeImage[]): Promise<Tr
       })
     );
     converted.push(...convertedBatch);
-    console.log('[ImageCache] Converted batch', Math.floor(i / batchSize) + 1, 'of', Math.ceil(images.length / batchSize));
   }
 
-  console.log('[ImageCache] Completed conversion of all', converted.length, 'images');
   return converted;
 }

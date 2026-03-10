@@ -1,6 +1,12 @@
 <template>
-  <q-dialog ref="dialogRef" @hide="onDialogHide">
-    <q-card class="width-600px">
+  <q-dialog
+    ref="dialogRef"
+    @hide="onDialogHide"
+    transition-show="slide-up"
+    transition-hide="slide-down"
+    :maximized="isMobile"
+  >
+    <q-card :class="isMobile ? '' : 'width-600px'" :style="isMobile ? 'width: 100vw; max-width: 100vw;' : ''">
 
       <q-card-section class="flex-row-title-btn-container">
         <div class="text-h6 primary-color">
@@ -68,7 +74,7 @@
           dense
           />
 
-          <div class="justify-between flex">
+          <div class="justify-between flex" :class="isMobile ? 'items-center' : ''">
             <CameraOrGalleryBtnComponent @createdImage="createdImage" />
 
             <q-checkbox
@@ -123,8 +129,13 @@
       </q-field>
 
           <!-- Carousel Dialog -->
-          <q-dialog v-model="showCarousel">
-            <q-card class="width-600px">
+          <q-dialog
+            v-model="showCarousel"
+            transition-show="fade"
+            transition-hide="fade"
+            :maximized="isMobile"
+          >
+            <q-card :class="isMobile ? '' : 'width-600px'" :style="isMobile ? 'width: 100vw; max-width: 100vw;' : ''">
               <q-card-section class="row items-center q-pb-none">
                 <div class="text-h6">Foto's</div>
                 <q-space />
@@ -141,7 +152,7 @@
       <q-separator />
 
       <q-card-actions align="right">
-        <q-btn color="primary" label="Opslaan" @click="onSubmit" :disable="!canSave" :loading="loading" />
+        <q-btn color="primary" label="Opslaan" @click="onSubmit" :disable="!canSave || loading" />
         <q-btn flat label="Annuleren" @click="onDialogCancel" :disable="loading" />
       </q-card-actions>
     </q-card>
@@ -152,7 +163,7 @@
   import { ref, watch, computed } from 'vue';
   import type { Address } from 'src/models/Address';
   import type { Tree } from 'src/models/Tree';
-  import { useDialogPluginComponent } from 'quasar';
+  import { useDialogPluginComponent, useQuasar } from 'quasar';
   import CameraOrGalleryBtnComponent from './CameraOrGalleryBtnComponent.vue';
   import CarouselComponent from './CarouselComponent.vue';
   import { useApi } from '../composables/useApi';
@@ -164,6 +175,7 @@
   }>();
 
   const { dialogRef, onDialogCancel, onDialogOK, onDialogHide } = useDialogPluginComponent();
+  const $q = useQuasar();
   const { loading, postData, putData } = useApi();
 
   defineEmits([...useDialogPluginComponent.emits]);
@@ -174,6 +186,7 @@
   const selectedImageIndex = ref(0);
 
   const isEditMode = computed(() => !!props.tree); // if tree prop is provided, we are in edit mode
+  const isMobile = computed(() => $q.screen.lt.md);
 
   // Check if there are changes compared to original
   const hasChanges = computed(() => {
@@ -271,13 +284,13 @@
 
       if (isEditMode.value) {
         const description = `Boom ${tree.value.treetype} (#${tree.value.treenumber}) wijzigen`;
-        const response = await putData(`/api/trees/${tree.value.id}`, tree.value, 'Boom succesvol bijgewerkt', description);
+        const response = await putData(`/api/trees/${tree.value.id}`, tree.value, 'Boom bijgewerkt', description);
         if (response) {
           onDialogOK(response);
         }
       } else {
         const description = `Nieuwe boom ${tree.value.treetype} (#${tree.value.treenumber}) toevoegen`;
-        const response = await postData('/api/trees/save', tree.value, 'Boom succesvol opgeslagen', description);
+        const response = await postData('/api/trees/save', tree.value, 'Boom opgeslagen', description);
         if (response) {
           onDialogOK(response);
         }

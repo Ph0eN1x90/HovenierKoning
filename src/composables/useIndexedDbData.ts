@@ -62,13 +62,10 @@ async function markAddressesFinished(ids: number[], dateFinished: string): Promi
 }
 
 async function saveTrees(trees: Tree[]): Promise<void> {
-  console.log('[saveTrees] Starting to save', trees.length, 'trees');
   try {
     const normalized = trees.map(normalizeTreeForStore);
     await saveMany('trees', normalized);
-    console.log('[saveTrees] Trees stored in IndexedDB');
     await saveTreeImagesForTrees(trees);
-    console.log('[saveTrees] All tree images processed');
   } catch (error) {
     console.error('[saveTrees] Error saving trees:', error);
     throw error;
@@ -230,10 +227,8 @@ async function saveTreeImagesForTree(tree: Tree): Promise<void> {
   }
 
   try {
-    console.log('[saveTreeImagesForTree] Converting', images.length, 'images for tree', tree.id);
     // Convert HTTP URLs to base64 for offline support
     const convertedImages = await convertTreeImagesToBase64(images);
-    console.log('[saveTreeImagesForTree] Converted', convertedImages.length, 'images successfully');
     await replaceTreeImagesForTree(tree.id, convertedImages);
   } catch (error) {
     console.error('[saveTreeImagesForTree] Error converting images for tree', tree.id, ':', error);

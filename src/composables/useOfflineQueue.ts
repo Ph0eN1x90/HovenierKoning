@@ -1,10 +1,12 @@
-import { Notify } from 'quasar';
 import { API_BASE_URL } from 'src/config/api';
 import type { QueuedRequest } from 'src/models/QueuedRequest';
 import type { Tree } from 'src/models/Tree';
 import type { Address } from 'src/models/Address';
 import { getIndexedDb } from './useIndexedDb';
 import { useIndexedDbData } from './useIndexedDbData';
+import { useAppNotify } from './useAppNotify';
+
+let queueInitialized = false;
 
 /**
  * Ensure data is cloneable for IndexedDB storage
@@ -107,8 +109,9 @@ async function getQueueCount(): Promise<number> {
  * Process all pending requests when connection is restored
  */
 async function processPendingRequests(): Promise<void> {
+  const notifier = useAppNotify();
+
   if (!navigator.onLine) {
-    console.log('Still offline, skipping queue processing');
     return;
   }
 
@@ -116,8 +119,6 @@ async function processPendingRequests(): Promise<void> {
   if (queue.length === 0) {
     return;
   }
-
-  console.log(`Processing ${queue.length} pending request(s)...`);
 
   const successfulRequests: string[] = [];
   const failedRequests: { request: QueuedRequest; error: string }[] = [];
@@ -204,7 +205,6 @@ async function processPendingRequests(): Promise<void> {
       }
 
       successfulRequests.push(queuedRequest.id);
-      console.log(`✓ Successfully processed: ${queuedRequest.description}`);
     } catch (error) {
       console.error(`✗ Failed to process: ${queuedRequest.description}`, error);
       failedRequests.push({
@@ -221,21 +221,15 @@ async function processPendingRequests(): Promise<void> {
 
   // Show notification about results
   if (successfulRequests.length > 0) {
-    Notify.create({
-      type: 'positive',
-      message: `${successfulRequests.length} offline wijziging(en) succesvol verzonden`,
+    notifier.success(`${successfulRequests.length} offline wijziging(en) verzonden`, {
       icon: 'cloud_done',
-      position: 'top',
       timeout: 4000,
     });
   }
 
   if (failedRequests.length > 0) {
-    Notify.create({
-      type: 'warning',
-      message: `${failedRequests.length} wijziging(en) konden niet worden verzonden`,
+    notifier.warning(`${failedRequests.length} wijziging(en) konden niet worden verzonden`, {
       icon: 'cloud_off',
-      position: 'top',
       timeout: 5000,
       actions: [
         {
@@ -252,20 +246,23 @@ async function processPendingRequests(): Promise<void> {
  * Initialize offline queue system with event listeners
  */
 function initializeOfflineQueue(): void {
+  const notifier = useAppNotify();
+
+  if (queueInitialized) {
+    return;
+  }
+
+  queueInitialized = true;
+
   // Process queue when connection is restored
   window.addEventListener('online', () => {
-    console.log('Connection restored, processing pending requests...');
     void processPendingRequests();
   });
 
   // Show notification when going offline
   window.addEventListener('offline', () => {
-    Notify.create({
-      type: 'info',
-      message: 'Offline modus geactiveerd - wijzigingen worden later verzonden',
+    notifier.info('Offline modus geactiveerd - wijzigingen worden later verzonden', {
       icon: 'cloud_off',
-      position: 'top',
-      timeout: 3000,
     });
   });
 

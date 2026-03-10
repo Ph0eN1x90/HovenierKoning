@@ -1,5 +1,11 @@
 <template>
-  <q-dialog ref="dialogRef" @hide="onDialogHide">
+  <q-dialog
+    ref="dialogRef"
+    @hide="onDialogHide"
+    transition-show="slide-up"
+    transition-hide="slide-down"
+    :maximized="isMobile"
+  >
     <q-card class="q-dialog-plugin width-600px">
 
       <q-card-section class="flex-row-title-btn-container text-h6 primary-color">
@@ -39,32 +45,25 @@
     <q-card-section class="text-h6 primary-color flex-add-new-tree-container">
       <!-- title -->
       Boom details
-      <span v-if="!loading" class="flex-add-new-tree-btn">
+      <span class="flex-add-new-tree-btn">
         <q-btn
         icon="add"
         size="lg"
         flat
         round
+        :disable="loading"
         @click="openNewTreeDialog"
         />
       </span>
     </q-card-section>
 
     <q-card-section>
-      <q-spinner v-if="loading" color="primary" size="20px" />
-
-      <span class="text" v-else-if="rawData.length === 0">Er zijn geen bomen gevonden.</span>
+      <span class="text" v-if="rawData.length === 0">Er zijn geen bomen gevonden.</span>
 
       <span class="list-of-trees-housenumer-dialog" v-else>
-        <span>
-          <q-inner-loading
-          :showing="loading"
-          color="primary"
-          />
-        </span>
-
         <!-- list of trees -->
         <q-list>
+          <transition-group name="tree-list" tag="div">
             <q-item :class="tree.finished ? 'finished-row-item' : 'unfinished-row-item'" clickable v-ripple :active="active" v-for="(tree, index) in rawData" :key="index" class="border-bottom-row row-item" @click="openTreeDetailsDialog(index)">
 
             <q-item-section class="flex-width-30 card-thumbnail-section">
@@ -99,6 +98,7 @@
           </q-item-section>
 
         </q-item>
+          </transition-group>
 
         <q-separator spaced />
 
@@ -113,8 +113,8 @@
 
 <script setup lang="ts">
 
-  import { Dialog, useDialogPluginComponent } from 'quasar'
-  import { ref } from 'vue';
+  import { Dialog, useDialogPluginComponent, useQuasar } from 'quasar'
+  import { computed, ref } from 'vue';
   import type { Address } from 'src/models/Address'
   import type { Tree } from 'src/models/Tree';
   import TreeFormDialogComponent from 'src/components/TreeFormDialogComponent.vue'
@@ -122,10 +122,12 @@
   import { useApi } from '../composables/useApi';
 
   const { dialogRef, onDialogHide, onDialogCancel } = useDialogPluginComponent()
+  const $q = useQuasar();
   const placeholderUrl = new URL('../assets/images/thumbnail-placeholder.png', import.meta.url).href
   const { loading, fetchData, deleteData } = useApi();
   const rawData = ref<Tree[]>([])
   const active = ref(true)
+  const isMobile = computed(() => $q.screen.lt.md);
   const props = defineProps<{
     address: Address
   }>()
@@ -141,7 +143,7 @@
       ? `Boom ${treeToDelete.treetype} (#${treeToDelete.treenumber}) verwijderen`
       : 'Boom verwijderen';
 
-    const response = await deleteData(`/api/trees/${id}`, 'Boom succesvol verwijderd', description, treeToDelete);
+    const response = await deleteData(`/api/trees/${id}`, 'Boom verwijderd', description, treeToDelete);
     if (response) {
       rawData.value = rawData.value.filter(tree => tree.id !== id);
     }
@@ -209,3 +211,16 @@
   }
 
 </script>
+
+<style scoped>
+.tree-list-enter-active,
+.tree-list-leave-active {
+  transition: all 0.25s ease;
+}
+
+.tree-list-enter-from,
+.tree-list-leave-to {
+  opacity: 0;
+  transform: translateY(10px);
+}
+</style>

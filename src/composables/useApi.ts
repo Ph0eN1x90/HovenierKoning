@@ -4,12 +4,62 @@
 
 import { inject, ref } from 'vue';
 import type { AxiosError, AxiosInstance } from 'axios';
-import { Notify } from 'quasar';
+import { Loading } from 'quasar';
 import { useIndexedDbData } from './useIndexedDbData';
 import { useOfflineQueue } from './useOfflineQueue';
 import { getIndexedDb } from './useIndexedDb';
+import { useAppNotify } from './useAppNotify';
 import type { Address } from 'src/models/Address';
 import type { Tree } from 'src/models/Tree';
+
+let activeLoadingRequests = 0;
+const OFFLINE_QUEUED_MESSAGE = 'Offline: wijziging wordt later verzonden';
+
+function beginLoading() {
+  activeLoadingRequests += 1;
+  if (activeLoadingRequests === 1) {
+    Loading.show({
+      delay: 200,
+      message: 'Bezig met laden...',
+      spinnerColor: 'primary',
+    });
+  }
+}
+
+function endLoading() {
+  activeLoadingRequests = Math.max(0, activeLoadingRequests - 1);
+  if (activeLoadingRequests === 0) {
+    Loading.hide();
+  }
+}
+
+function getFriendlyApiCaption(error: AxiosError): string {
+  if (!navigator.onLine || error.code === 'ERR_NETWORK') {
+    return 'Controleer je internetverbinding en probeer opnieuw.';
+  }
+
+  const status = error.response?.status;
+  switch (status) {
+    case 400:
+      return 'De aanvraag is ongeldig. Controleer je invoer.';
+    case 401:
+      return 'Je sessie is verlopen. Log opnieuw in.';
+    case 403:
+      return 'Je hebt geen rechten om deze actie uit te voeren.';
+    case 404:
+      return 'De gevraagde gegevens zijn niet gevonden.';
+    case 409:
+      return 'Er is een conflict met bestaande gegevens.';
+    case 422:
+      return 'Ingevoerde gegevens zijn niet valide.';
+    case 500:
+    case 502:
+    case 503:
+      return 'Server tijdelijk niet beschikbaar. Probeer later opnieuw.';
+    default:
+      return 'Er is een onverwachte fout opgetreden.';
+  }
+}
 
 export function useApi() {
   const api = inject<AxiosInstance>('api');
@@ -20,6 +70,7 @@ export function useApi() {
 
   const loading = ref(false);
   const error = ref<string | null>(null);
+  const notifier = useAppNotify();
 
   const {
     saveAddresses,
@@ -151,14 +202,12 @@ export function useApi() {
     }
 
     if (url === '/api/trees/all' || url.startsWith('/api/trees/all/')) {
-      console.log('[persistResponseData] /api/trees/all response structure:', { type: typeof data, isArray: Array.isArray(data), keys: !Array.isArray(data) && data ? Object.keys(data) : null });
       if (Array.isArray(data)) {
         await saveTrees(data);
       } else if (data && typeof data === 'object' && 'data' in data) {
         // Handle { data: [...] } format
         const trees = (data as { data: Tree[] }).data;
         if (Array.isArray(trees)) {
-          console.log('[persistResponseData] Found trees in data.data property');
           await saveTrees(trees);
         }
       }
@@ -228,25 +277,21 @@ export function useApi() {
     useCache = true
   ): Promise<T | null> {
     loading.value = true;
+    beginLoading();
     error.value = null;
-
-    console.log('[fetchData] Fetching URL:', url, 'Online:', navigator.onLine);
 
     if (!navigator.onLine && useCache) {
       const cached = await getOfflineData<T>(url);
       if (cached) {
-        console.log('[fetchData] Offline mode - returning cached data for:', url);
         loading.value = false;
+        endLoading();
         return cached;
       }
     }
 
     try {
-      console.log('[fetchData] Making API call to:', url);
       const { data } = await apiClient.get<T>(url);
-      console.log('[fetchData] API response received:', { url, dataType: typeof data, dataLength: Array.isArray(data) ? data.length : 'N/A' });
       await persistResponseData(url, data);
-      console.log('[fetchData] Data persisted successfully');
       return data;
     } catch (err) {
       const axiosError = err as AxiosError;
@@ -260,13 +305,8 @@ export function useApi() {
       if (useCache) {
         const cached = await getOfflineData<T>(url);
         if (cached) {
-          console.log('[fetchData] Falling back to cached data for:', url);
-          Notify.create({
-            type: 'warning',
-            message: 'Offline: opgeslagen data getoond',
+          notifier.warning('Offline: opgeslagen data getoond', {
             icon: 'cloud_off',
-            position: 'top',
-            timeout: 3000,
           });
           loading.value = false;
           return cached;
@@ -274,17 +314,14 @@ export function useApi() {
       }
 
       console.error('[fetchData] No cached data available, showing error notification');
-      Notify.create({
-        type: 'negative',
-        message: errorMessage,
-        caption: axiosError.message,
-        position: 'top',
-        timeout: 3000
+      notifier.error(errorMessage, {
+        caption: getFriendlyApiCaption(axiosError),
       });
 
       return null;
     } finally {
       loading.value = false;
+      endLoading();
     }
   }
 
@@ -298,10 +335,11 @@ export function useApi() {
   async function postData<T>(
     url: string,
     payload: unknown,
-    successMessage = 'Succesvol opgeslagen',
+    successMessage = 'Gegevens opgeslagen',
     description?: string
   ): Promise<T | null> {
     loading.value = true;
+    beginLoading();
     error.value = null;
 
     try {
@@ -313,10 +351,7 @@ export function useApi() {
 
       await persistResponseData(url, data);
 
-      Notify.create({
-        type: 'positive',
-        message: successMessage,
-        position: 'top',
+      notifier.success(successMessage, {
         timeout: 2000,
       });
 
@@ -343,12 +378,8 @@ export function useApi() {
             description: description || 'Data opslaan',
           });
 
-          Notify.create({
-            type: 'info',
-            message: 'Offline: wijziging wordt later verzonden',
+          notifier.info(OFFLINE_QUEUED_MESSAGE, {
             icon: 'cloud_queue',
-            position: 'top',
-            timeout: 3000,
           });
 
           return localTree as T;
@@ -361,29 +392,22 @@ export function useApi() {
           description: description || 'Data opslaan',
         });
 
-        Notify.create({
-          type: 'info',
-          message: 'Offline: wijziging wordt later verzonden',
+        notifier.info(OFFLINE_QUEUED_MESSAGE, {
           icon: 'cloud_queue',
-          position: 'top',
-          timeout: 3000,
         });
 
         return payload as T;
       }
 
       // Other errors (server error, validation error, etc.)
-      Notify.create({
-        type: 'negative',
-        message: 'Opslaan mislukt',
-        caption: axiosError.message,
-        position: 'top',
-        timeout: 3000
+      notifier.error('Opslaan mislukt', {
+        caption: getFriendlyApiCaption(axiosError),
       });
 
       return null;
     } finally {
       loading.value = false;
+      endLoading();
     }
   }
 
@@ -393,10 +417,11 @@ export function useApi() {
   async function putData<T>(
     url: string,
     payload: unknown,
-    successMessage = 'Succesvol bijgewerkt',
+    successMessage = 'Gegevens bijgewerkt',
     description?: string
   ): Promise<T | null> {
     loading.value = true;
+    beginLoading();
     error.value = null;
 
     try {
@@ -418,10 +443,7 @@ export function useApi() {
 
       await persistResponseData(url, data);
 
-      Notify.create({
-        type: 'positive',
-        message: successMessage,
-        position: 'top',
+      notifier.success(successMessage, {
         timeout: 2000,
       });
 
@@ -461,12 +483,8 @@ export function useApi() {
             });
           }
 
-          Notify.create({
-            type: 'info',
-            message: 'Offline: wijziging wordt later verzonden',
+          notifier.info(OFFLINE_QUEUED_MESSAGE, {
             icon: 'cloud_queue',
-            position: 'top',
-            timeout: 3000,
           });
 
           return payload as T;
@@ -484,12 +502,8 @@ export function useApi() {
             description: description || 'Data bijwerken',
           });
 
-          Notify.create({
-            type: 'info',
-            message: 'Offline: wijziging wordt later verzonden',
+          notifier.info(OFFLINE_QUEUED_MESSAGE, {
             icon: 'cloud_queue',
-            position: 'top',
-            timeout: 3000,
           });
 
           return payload as T;
@@ -502,29 +516,22 @@ export function useApi() {
           description: description || 'Data bijwerken',
         });
 
-        Notify.create({
-          type: 'info',
-          message: 'Offline: wijziging wordt later verzonden',
+        notifier.info(OFFLINE_QUEUED_MESSAGE, {
           icon: 'cloud_queue',
-          position: 'top',
-          timeout: 3000,
         });
 
         return payload as T;
       }
 
       // Other errors
-      Notify.create({
-        type: 'negative',
-        message: 'Bijwerken mislukt',
-        caption: axiosError.message,
-        position: 'top',
-        timeout: 3000
+      notifier.error('Bijwerken mislukt', {
+        caption: getFriendlyApiCaption(axiosError),
       });
 
       return null;
     } finally {
       loading.value = false;
+      endLoading();
     }
   }
 
@@ -533,11 +540,12 @@ export function useApi() {
    */
   async function deleteData(
     url: string,
-    successMessage = 'Succesvol verwijderd',
+    successMessage = 'Gegevens verwijderd',
     description?: string,
     treeForCache?: Tree
   ): Promise<boolean> {
     loading.value = true;
+    beginLoading();
     error.value = null;
 
     // Extract tree ID from URL for cache update
@@ -551,10 +559,7 @@ export function useApi() {
         await applyTreeDelete(treeId, treeToUse?.address?.id);
       }
 
-      Notify.create({
-        type: 'positive',
-        message: successMessage,
-        position: 'top',
+      notifier.success(successMessage, {
         timeout: 2000,
       });
 
@@ -582,12 +587,8 @@ export function useApi() {
             await applyTreeDelete(treeId, addressId);
           }
 
-          Notify.create({
-            type: 'info',
-            message: 'Offline: verwijdering wordt later verzonden',
+          notifier.info(OFFLINE_QUEUED_MESSAGE, {
             icon: 'cloud_queue',
-            position: 'top',
-            timeout: 3000,
           });
 
           return true;
@@ -599,29 +600,22 @@ export function useApi() {
           description: description || 'Data verwijderen',
         });
 
-        Notify.create({
-          type: 'info',
-          message: 'Offline: verwijdering wordt later verzonden',
+        notifier.info(OFFLINE_QUEUED_MESSAGE, {
           icon: 'cloud_queue',
-          position: 'top',
-          timeout: 3000,
         });
 
         return true;
       }
 
       // Other errors
-      Notify.create({
-        type: 'negative',
-        message: 'Verwijderen mislukt',
-        caption: axiosError.message,
-        position: 'top',
-        timeout: 3000
+      notifier.error('Verwijderen mislukt', {
+        caption: getFriendlyApiCaption(axiosError),
       });
 
       return false;
     } finally {
       loading.value = false;
+      endLoading();
     }
   }
 

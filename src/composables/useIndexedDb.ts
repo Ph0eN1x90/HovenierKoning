@@ -25,10 +25,14 @@ export interface AppDbSchema extends DBSchema {
     value: QueuedRequest;
     indexes: { 'by-timestamp': number; 'by-clientId': number };
   };
+  uiPreferences: {
+    key: string;
+    value: string;
+  };
 }
 
 const DB_NAME = 'HovenierKoning_DB';
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 
 let dbPromise: Promise<IDBPDatabase<AppDbSchema>> | null = null;
 
@@ -67,6 +71,10 @@ export function getIndexedDb(): Promise<IDBPDatabase<AppDbSchema>> {
           if (!treeImageStore.indexNames.contains('by-treeId')) {
             treeImageStore.createIndex('by-treeId', 'tree.id');
           }
+        }
+
+        if (!db.objectStoreNames.contains('uiPreferences')) {
+          db.createObjectStore('uiPreferences');
         }
       },
     });

@@ -1,34 +1,32 @@
 <template>
   <div class="flex-row">
     <q-btn
-      url="https://cdn.quasar.dev/img/avatar2.jpg"
       color="primary"
-      icon="camera_alt"
+      icon="add_a_photo"
       size="small"
       flat
       round
-      @click="openCameraOrGallery"
-    />
-
-    <q-separator vertical />
-
-    <q-btn
-      color="secondary"
-      icon="photo_library"
-      size="small"
-      flat
-      round
-      @click="openGallery"
+      @click="openSourceChooser"
     />
   </div>
 </template>
 
 <script setup lang="ts">
 import { useQuasar } from 'quasar';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import imageCompression from 'browser-image-compression';
+import { useAppNotify } from 'src/composables/useAppNotify';
+import { usePlatformDetection } from 'src/composables/usePlatformDetection';
 
 const $q = useQuasar();
+const notifier = useAppNotify();
+const {
+  isMobileDevice,
+  canUseBrowserCamera,
+  captureStrategy,
+  runtimeLabel,
+  cameraFailureCaption,
+} = usePlatformDetection();
 const dataURL = ref<string>('');
 const emit = defineEmits<{
   (emitCreatedImage: 'createdImage', image: string): void
@@ -71,7 +69,7 @@ const compressCanvas = async (canvas: HTMLCanvasElement): Promise<string> => {
 
       const file = new File([blob], 'camera-capture.jpg', { type: 'image/jpeg' });
       compressImage(file)
-        .then(compressed => resolve(compressed))
+        .then((compressed) => resolve(compressed))
         .catch(error => reject(error instanceof Error ? error : new Error(String(error))));
     }, 'image/jpeg', 0.95);
   });
@@ -81,8 +79,57 @@ const emitCreatedImage = () => {
   emit('createdImage', dataURL.value);
 };
 
+const cameraActionLabel = computed(() =>
+  runtimeLabel.value === 'web' ? 'Camera (web)' : 'Camera (app)'
+);
+
+const openSourceChooser = () => {
+  $q.bottomSheet({
+    message: 'Kies bron',
+    actions: [
+      {
+        label: cameraActionLabel.value,
+        icon: 'camera_alt',
+        color: 'primary',
+        id: 'camera',
+      },
+      {
+        label: 'Galerij',
+        icon: 'photo_library',
+        color: 'secondary',
+        id: 'gallery',
+      },
+      {},
+      {
+        label: 'Annuleren',
+        icon: 'close',
+        color: 'negative',
+        id: 'cancel',
+      },
+    ],
+  }).onOk((action: { id?: string }) => {
+    if (action.id === 'camera') {
+      if (captureStrategy.value === 'gallery-only') {
+        notifier.warning('Camera niet beschikbaar op dit platform', {
+          caption: cameraFailureCaption.value,
+          timeout: 3000,
+        });
+        openGallery('cameraFallback');
+        return;
+      }
+
+      openCameraOrGallery();
+      return;
+    }
+
+    if (action.id === 'gallery') {
+      openGallery('gallery');
+    }
+  });
+};
+
 const openCameraOrGallery = () => {
-  if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+  if (canUseBrowserCamera.value) {
     navigator.mediaDevices.getUserMedia({ video: true })
       .then((stream) => {
         // Maak een overlay aan voor de camera preview
@@ -180,25 +227,17 @@ const openCameraOrGallery = () => {
           ctx?.drawImage(video, 0, 0, canvas.width, canvas.height);
 
           try {
-            // Comprimeer de foto voordat deze wordt ge-emit
             dataURL.value = await compressCanvas(canvas);
             emitCreatedImage();
 
-            $q.notify({
-              message: 'Foto succesvol opgeslagen en gecomprimeerd',
-              color: 'positive',
-              icon: 'check_circle',
-              position: 'top',
-              timeout: 2000
+            notifier.success('Foto opgeslagen en gecomprimeerd', {
+              timeout: 2000,
             });
           } catch (error) {
             console.error('Compressie fout:', error);
-            $q.notify({
-              message: 'Foto opslaan mislukt',
-              color: 'negative',
-              icon: 'error',
-              position: 'top',
-              timeout: 3000
+            notifier.error('Foto opslaan mislukt', {
+              caption: 'Probeer opnieuw of kies een andere foto.',
+              timeout: 3000,
             });
           }
 
@@ -214,48 +253,48 @@ const openCameraOrGallery = () => {
       })
       .catch((error) => {
         console.error('Er ging iets mis:', error);
-        $q.notify({
-          message: 'Camera openen is mislukt.',
-          color: 'negative',
+        notifier.error('Camera openen is mislukt.', {
+          caption: cameraFailureCaption.value,
           icon: 'warning',
         });
-        openGallery();
+        openGallery('cameraFallback');
       });
   } else {
-    openGallery();
+    notifier.warning('Camera niet beschikbaar op dit platform', {
+      caption: cameraFailureCaption.value,
+      timeout: 3000,
+    });
+    openGallery('cameraFallback');
   }
 };
 
-const openGallery = () => {
+const openGallery = (mode: 'gallery' | 'cameraFallback') => {
   // Maak een verborgen input element aan voor het selecteren van een bestand
   const input = document.createElement('input');
   input.type = 'file';
   input.accept = 'image/*';
+
+  if (mode === 'cameraFallback' && isMobileDevice.value) {
+    input.capture = 'environment';
+  }
+
   input.onchange = async (event: Event) => {
     const target = event.target as HTMLInputElement;
     if (target.files && target.files[0]) {
       const file = target.files[0];
 
       try {
-        // Comprimeer de foto voordat deze wordt ge-emit
         dataURL.value = await compressImage(file);
         emitCreatedImage();
 
-        $q.notify({
-          message: 'Foto succesvol geüpload en gecomprimeerd',
-          color: 'positive',
-          icon: 'check_circle',
-          position: 'top',
-          timeout: 2000
+        notifier.success('Foto geüpload en gecomprimeerd', {
+          timeout: 2000,
         });
       } catch (error) {
         console.error('Upload/compressie fout:', error);
-        $q.notify({
-          message: 'Foto uploaden mislukt',
-          color: 'negative',
-          icon: 'error',
-          position: 'top',
-          timeout: 3000
+        notifier.error('Foto uploaden mislukt', {
+          caption: 'Controleer bestandsformaat en probeer opnieuw.',
+          timeout: 3000,
         });
       }
     }

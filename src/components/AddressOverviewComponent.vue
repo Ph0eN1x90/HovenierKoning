@@ -1,5 +1,6 @@
 <template>
   <div>
+    <q-pull-to-refresh @refresh="onPullRefresh">
     <!-- Search & Filter Section -->
     <q-card flat bordered class="q-mb-md">
       <q-card-section>
@@ -46,22 +47,19 @@
     title="Adressen Overzicht"
     title-class="text-h6 primary-color"
     class="width-800px"
-    :loading="loading"
     :rows="filteredRows"
     :columns="columns"
+    :visible-columns="visibleColumns"
+    :dense="isCompact"
     no-data-label="Geen adressen gevonden"
     no-results-label="Geen resultaten gevonden"
     row-key="id"
+    virtual-scroll
+    table-style="max-height: 70vh"
+    :rows-per-page-options="[0]"
     :pagination="{
-      rowsPerPage: 15
+      rowsPerPage: 0
     }">
-
-    <template #loading>
-      <q-inner-loading
-      showing
-      color="primary"
-      />
-    </template>
 
     <template #body="props">
       <q-tr
@@ -101,11 +99,12 @@
   </template>
 
   <template v-slot:top-right>
-    <div class="row q-gutter-sm items-center">
+    <div class="row q-gutter-sm" :class="isCompact ? 'items-stretch full-width justify-end' : 'items-center'">
       <q-chip
         outline
         color="primary"
         icon="filter_list"
+        :dense="isCompact"
       >
         {{ filteredRows.length }} van {{ rows.length }} adressen
       </q-chip>
@@ -162,6 +161,7 @@
   </template>
 
 </q-table>
+  </q-pull-to-refresh>
 </div>
 </template>
 
@@ -169,14 +169,17 @@
 
   import type { QTableColumn } from 'quasar';
   import { ref, computed } from 'vue';
-  import { copyToClipboard, Notify } from 'quasar'
+  import { copyToClipboard, useQuasar } from 'quasar'
   import type { Address } from 'src/models/Address';
   import { useApi } from '../composables/useApi';
+  import { useAppNotify } from 'src/composables/useAppNotify';
   import * as XLSX from 'xlsx';
   import jsPDF from 'jspdf';
   import autoTable from 'jspdf-autotable';
 
-  const { loading, fetchData, prefetchTreesForCache } = useApi();
+  const { fetchData, prefetchTreesForCache } = useApi();
+  const notifier = useAppNotify();
+  const $q = useQuasar();
 
   const searchQuery = ref('');
   const filterStatus = ref<string | null>(null);
@@ -185,6 +188,12 @@
   const rows = ref<Address[]>([]);
 
   const statusOptions = ['Alle', 'Afgerond', 'Lopend'];
+  const isCompact = computed(() => $q.screen.lt.md);
+  const visibleColumns = computed(() =>
+    isCompact.value
+      ? ['streetname', 'city', 'count', 'completed']
+      : columns.map((column) => column.name)
+  );
 
   // Background worker to prefetch all trees with images for offline support
   function startBackgroundCaching() {
@@ -200,10 +209,7 @@
 
   // Load data with new API composable
   async function loadAddresses() {
-    console.log('[Debug] loadAddresses called');
     const data = await fetchData<Address[]>('/api/address/', 'Fout bij laden van adressen');
-
-    console.log('[Debug] Fetched data:', data);
 
     if (!data) return;
 
@@ -251,6 +257,10 @@
     // Start background worker to cache all trees+images (non-blocking)
     startBackgroundCaching();
   }
+
+  const onPullRefresh = (done: () => void) => {
+    void loadAddresses().finally(done);
+  };
 
     // Computed: unique cities for filter
   const cityOptions = computed(() => {
@@ -381,19 +391,11 @@
       XLSX.writeFile(wb, filename);
 
       const totalBomen = allAddresses.value.reduce((sum, addr) => sum + (addr.trees?.length || 0), 0);
-      Notify.create({
-        type: 'positive',
-        message: `Excel bestand "${filename}" succesvol gedownload (${straatData.length} straten, ${allAddresses.value.length} adressen, ${totalBomen} bomen)`,
-        position: 'top',
-        timeout: 4000
+      notifier.success(`Excel-bestand gedownload: ${filename} (${straatData.length} straten, ${allAddresses.value.length} adressen, ${totalBomen} bomen)`, {
+        timeout: 4000,
       });
     } catch (error) {
-      Notify.create({
-        type: 'negative',
-        message: 'Fout bij exporteren naar Excel',
-        position: 'top',
-        timeout: 3000
-      });
+      notifier.error('Fout bij exporteren naar Excel');
       console.error('Export error:', error);
     }
   };
@@ -524,19 +526,9 @@
       const filename = `Overzichtsrapport_${date}.pdf`;
       doc.save(filename);
 
-      Notify.create({
-        type: 'positive',
-        message: `PDF rapport "${filename}" succesvol gedownload`,
-        position: 'top',
-        timeout: 3000
-      });
+      notifier.success(`PDF-rapport gedownload: ${filename}`);
     } catch (error) {
-      Notify.create({
-        type: 'negative',
-        message: 'Fout bij exporteren naar PDF',
-        position: 'top',
-        timeout: 3000
-      });
+      notifier.error('Fout bij exporteren naar PDF');
       console.error('PDF export error:', error);
     }
   };

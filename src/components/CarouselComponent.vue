@@ -97,6 +97,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
+import { useQuasar } from 'quasar'
 
 const props = defineProps<{
   images: string[]
@@ -106,6 +107,7 @@ const props = defineProps<{
 const currentIndex = ref(props.initialSlide ?? 0)
 const zoomLevel = ref(1)
 const isFullscreen = ref(false)
+const $q = useQuasar()
 
 const nextImage = () => {
   currentIndex.value = (currentIndex.value + 1) % props.images.length
@@ -121,8 +123,12 @@ const toggleZoom = () => {
   zoomLevel.value = zoomLevel.value === 1 ? 2 : 1
 }
 
+const syncFullscreenState = () => {
+  isFullscreen.value = $q.fullscreen.isActive
+}
+
 const toggleFullscreen = () => {
-  isFullscreen.value = !isFullscreen.value
+  void $q.fullscreen.toggle()
 }
 
 // Keyboard navigation
@@ -132,7 +138,7 @@ const handleKeyPress = (event: KeyboardEvent) => {
   } else if (event.key === 'ArrowRight') {
     nextImage()
   } else if (event.key === 'Escape' && isFullscreen.value) {
-    isFullscreen.value = false
+    void $q.fullscreen.exit()
   } else if (event.key === '+' || event.key === '=') {
     zoomLevel.value = Math.min(zoomLevel.value + 0.5, 3)
   } else if (event.key === '-') {
@@ -141,11 +147,17 @@ const handleKeyPress = (event: KeyboardEvent) => {
 }
 
 onMounted(() => {
+  syncFullscreenState()
   window.addEventListener('keydown', handleKeyPress)
+  window.addEventListener('fullscreenchange', syncFullscreenState)
 })
 
 onUnmounted(() => {
+  if ($q.fullscreen.isActive) {
+    void $q.fullscreen.exit()
+  }
   window.removeEventListener('keydown', handleKeyPress)
+  window.removeEventListener('fullscreenchange', syncFullscreenState)
 })
 
 </script>

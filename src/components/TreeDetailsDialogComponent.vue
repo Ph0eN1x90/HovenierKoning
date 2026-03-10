@@ -1,5 +1,11 @@
 <template>
-  <q-dialog ref="dialogRef" @hide="onDialogHide">
+  <q-dialog
+    ref="dialogRef"
+    @hide="onDialogHide"
+    transition-show="slide-up"
+    transition-hide="slide-down"
+    :maximized="isMobile"
+  >
     <q-card class="q-dialog-plugin tree-details-card width-800px">
 
       <!-- Header with close button -->
@@ -64,7 +70,8 @@
 </template>
 
 <script setup lang="ts">
-import { useDialogPluginComponent } from 'quasar';
+import { useDialogPluginComponent, useQuasar } from 'quasar';
+import { computed } from 'vue';
 import type { Tree } from 'src/models/Tree';
 import type { Address } from 'src/models/Address';
 import CarouselComponent from './CarouselComponent.vue';
@@ -79,5 +86,7 @@ defineEmits([
 ]);
 
 const { dialogRef, onDialogHide, onDialogCancel } = useDialogPluginComponent();
+const $q = useQuasar();
+const isMobile = computed(() => $q.screen.lt.md);
 
 </script>

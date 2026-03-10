@@ -1,5 +1,6 @@
 <template>
   <div>
+    <q-pull-to-refresh @refresh="onPullRefresh">
     <!-- Bulk Actions -->
     <q-card v-if="selected.length > 0" flat bordered class="q-mb-md bg-blue-1">
       <q-card-section class="row items-center q-py-sm">
@@ -11,18 +12,22 @@
           <q-btn
             color="positive"
             icon="check_circle"
-            label="Markeer als afgerond"
+            :label="isCompact ? undefined : 'Markeer als afgerond'"
             @click="bulkMarkAsFinished"
             :loading="bulkLoading"
+            :round="isCompact"
+            :dense="isCompact"
             unelevated
           />
           <q-btn
             flat
             color="negative"
             icon="clear"
-            label="Annuleer selectie"
+            :label="isCompact ? undefined : 'Annuleer selectie'"
             @click="clearSelection"
             :disable="bulkLoading"
+            :round="isCompact"
+            :dense="isCompact"
           />
         </div>
       </q-card-section>
@@ -64,23 +69,22 @@
     :title="`${address}`"
     title-class="text-h6  primary-color"
     class="width-800px"
-    :loading="loading"
     :rows="filteredRows"
     :columns="columns"
+    :visible-columns="visibleColumns"
+    :dense="isCompact"
     no-data-label="Geen huisnummers gevonden"
     no-results-label="Geen resultaten gevonden"
-    row-key="id"    v-model:selected="selected"
-    selection="multiple"    :pagination="{
-      rowsPerPage: 15
+    row-key="id"
+    v-model:selected="selected"
+    selection="multiple"
+    virtual-scroll
+    table-style="max-height: 70vh"
+    :rows-per-page-options="[0]"
+    :pagination="{
+      rowsPerPage: 0
     }"
     >
-
-    <template #loading>
-      <q-inner-loading
-      showing
-      color="primary"
-      />
-    </template>
 
     <template #body="props" >
       <q-tr :props="props" :class="props.row.finished ? 'finished-row-item' : 'unfinished-row-item'">
@@ -111,11 +115,12 @@
     </template>
 
     <template v-slot:top-right>
-      <div class="row q-gutter-sm items-center">
+      <div class="row q-gutter-sm" :class="isCompact ? 'items-stretch full-width justify-end' : 'items-center'">
         <q-chip
           outline
           color="primary"
           icon="filter_list"
+          :dense="isCompact"
         >
           {{ filteredRows.length }} van {{ rows.length }} huisnummers
         </q-chip>
@@ -126,7 +131,6 @@
           icon="refresh"
           @click="refreshAddresses"
           color="primary"
-          :loading="loading"
         >
           <q-tooltip>Ververs data</q-tooltip>
         </q-btn>
@@ -144,12 +148,13 @@
     </template>
 
   </q-table>
+  </q-pull-to-refresh>
 </div>
 </template>
 
 <script setup lang="ts">
   import type { QTableColumn } from 'quasar';
-  import { copyToClipboard, Dialog } from 'quasar';
+  import { copyToClipboard, Dialog, useQuasar } from 'quasar';
   import { ref, computed } from 'vue';
   import type { Address } from 'src/models/Address';
   import { useRoute } from 'vue-router';
@@ -157,14 +162,21 @@
   import { useApi } from '../composables/useApi';
 
   const route = useRoute();
+  const $q = useQuasar();
   const address = ref(route.params.address as string);
   const searchQuery = ref('');
   const filterStatus = ref<string | null>(null);
-  const { loading, fetchData, putData } = useApi();
+  const { fetchData, putData } = useApi();
   const bulkLoading = ref(false);
   const selected = ref<Address[]>([]);
   const rows = ref<Address[]>([]);
   const statusOptions = ['Alle', 'Afgerond', 'Lopend'];
+  const isCompact = computed(() => $q.screen.lt.md);
+  const visibleColumns = computed(() =>
+    isCompact.value
+      ? ['housenumber', 'zipcode', 'completed']
+      : columns.map((column) => column.name)
+  );
 
   // Computed: filtered rows
   const filteredRows = computed(() => {
@@ -199,6 +211,10 @@
     await loadAddresses();
   };
 
+  const onPullRefresh = (done: () => void) => {
+    void refreshAddresses().finally(done);
+  };
+
   const clearSelection = () => {
     selected.value = [];
   };
@@ -210,7 +226,7 @@
     const ids = selected.value.map(addr => addr.id);
     const description = `${selected.value.length} adres(sen) markeren als afgerond`;
 
-    const response = await putData('/api/address/bulk-finish', { ids }, 'Adressen succesvol gemarkeerd als afgerond', description);
+    const response = await putData('/api/address/bulk-finish', { ids }, 'Adressen gemarkeerd als afgerond', description);
 
     if (response) {
       await refreshAddresses();
