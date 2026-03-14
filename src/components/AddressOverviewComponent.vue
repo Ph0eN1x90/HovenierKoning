@@ -173,7 +173,7 @@
   import type { Address } from 'src/models/Address';
   import { useApi } from '../composables/useApi';
   import { useAppNotify } from 'src/composables/useAppNotify';
-  import * as XLSX from 'xlsx';
+  import ExcelJS from 'exceljs';
   import jsPDF from 'jspdf';
   import autoTable from 'jspdf-autotable';
 
@@ -297,7 +297,7 @@
   });
 
   // Excel export function
-  const exportToExcel = () => {
+  const exportToExcel = async () => {
     try {
       // Sheet 1: Straten overzicht
       const straatData = filteredRows.value.map(row => ({
@@ -367,28 +367,50 @@
       });
 
       // Create workbook
-      const wb = XLSX.utils.book_new();
+      const workbook = new ExcelJS.Workbook();
 
       // Add Sheet 1: Straten overzicht
-      const ws1 = XLSX.utils.json_to_sheet(straatData);
-      ws1['!cols'] = [
-        { wch: 25 }, { wch: 15 }, { wch: 10 }, { wch: 20 }, { wch: 10 }
+      const ws1 = workbook.addWorksheet('Straten Overzicht');
+      ws1.columns = [
+        { header: 'Straat', key: 'Straat', width: 25 },
+        { header: 'Stad', key: 'Stad', width: 15 },
+        { header: 'Postcode', key: 'Postcode', width: 10 },
+        { header: 'Aantal Huisnummers', key: 'Aantal Huisnummers', width: 20 },
+        { header: 'Afgerond', key: 'Afgerond', width: 10 },
       ];
-      XLSX.utils.book_append_sheet(wb, ws1, 'Straten Overzicht');
+      ws1.addRows(straatData);
 
       // Add Sheet 2: Hierarchical view
-      const ws2 = XLSX.utils.json_to_sheet(hierarchicalData);
-      ws2['!cols'] = [
-        { wch: 12 }, { wch: 25 }, { wch: 12 }, { wch: 10 }, { wch: 20 }, { wch: 12 }, { wch: 15 }, { wch: 10 }, { wch: 15 }, { wch: 30 }
+      const ws2 = workbook.addWorksheet('Adressen met Bomen');
+      ws2.columns = [
+        { header: 'Type', key: 'Type', width: 12 },
+        { header: 'Straat', key: 'Straat', width: 25 },
+        { header: 'Huisnummer', key: 'Huisnummer', width: 12 },
+        { header: 'Boom#', key: 'Boom#', width: 10 },
+        { header: 'Boomtype', key: 'Boomtype', width: 20 },
+        { header: 'Hoogte (m)', key: 'Hoogte (m)', width: 12 },
+        { header: 'Diameter (cm)', key: 'Diameter (cm)', width: 15 },
+        { header: 'Afgerond', key: 'Afgerond', width: 10 },
+        { header: 'Datum Afgerond', key: 'Datum Afgerond', width: 15 },
+        { header: 'Commentaar', key: 'Commentaar', width: 30 },
       ];
-      XLSX.utils.book_append_sheet(wb, ws2, 'Adressen met Bomen');
+      ws2.addRows(hierarchicalData);
 
       // Generate filename with current date
       const date = new Date().toISOString().split('T')[0];
       const filename = `Volledige_Export_${date}.xlsx`;
 
       // Save file
-      XLSX.writeFile(wb, filename);
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      link.click();
+      window.URL.revokeObjectURL(url);
 
       const totalBomen = allAddresses.value.reduce((sum, addr) => sum + (addr.trees?.length || 0), 0);
       notifier.success(`Excel-bestand gedownload: ${filename} (${straatData.length} straten, ${allAddresses.value.length} adressen, ${totalBomen} bomen)`, {
